@@ -143,7 +143,6 @@ with comprehensive URL rewriting including media URLs for local development.`,
 		skipDatabase, _ := cmd.Flags().GetBool("skip-database")
 		deleteLocal, _ := cmd.Flags().GetBool("delete-local")
 		suppressDebug, _ := cmd.Flags().GetBool("suppress-debug")
-		createUploadRedirect, _ := cmd.Flags().GetBool("create-upload-redirect")
 
 		syncOptions := wpengine.SyncOptions{
 			SkipMedia:     skipMedia,
@@ -221,8 +220,8 @@ with comprehensive URL rewriting including media URLs for local development.`,
 					fmt.Printf("   📊 Rewritten URLs: %d\n", rewrittenURLs)
 				}
 
-				// Create upload domain redirect plugin if requested
-				if createUploadRedirect {
+				// Create upload domain redirect plugin when media files are being skipped (default behavior)
+				if skipMedia {
 					fmt.Printf("🔌 Creating upload domain redirect plugin...\n")
 					if err := dbManager.CreateUploadDomainRedirectPlugin(localURL, remoteURL); err != nil {
 						fmt.Printf("   ⚠️  Warning: Failed to create upload redirect plugin: %v\n", err)
@@ -232,16 +231,11 @@ with comprehensive URL rewriting including media URLs for local development.`,
 		}
 
 		// Show media configuration
-		if !skipMedia {
+		if skipMedia {
 			fmt.Printf("🖼️  Media configuration:\n")
-			if createUploadRedirect {
-				fmt.Printf("   📍 Database URLs: Rewritten to local development URLs\n")
-				fmt.Printf("   🔌 WordPress URLs: Redirected to WP Engine via must-use plugin\n")
-				fmt.Printf("   ✅ Result: Media loads from WP Engine, database works locally\n")
-			} else {
-				fmt.Printf("   📍 Media URLs have been rewritten to local development URLs\n")
-				fmt.Printf("   ⚠️  Media files will need to exist locally or use --create-upload-redirect flag\n")
-			}
+			fmt.Printf("   📍 Database URLs: Rewritten to local development URLs\n")
+			fmt.Printf("   🔌 WordPress URLs: Redirected to WP Engine via must-use plugin\n")
+			fmt.Printf("   ✅ Result: Media loads from WP Engine, database works locally\n")
 			fmt.Printf("   ℹ️  Media files remain on WP Engine server\n")
 		}
 
@@ -331,7 +325,6 @@ var wpeDbImportCmd = &cobra.Command{
 		client := wpengine.NewClient(*config)
 
 		suppressDebug, _ := cmd.Flags().GetBool("suppress-debug")
-		createUploadRedirect, _ := cmd.Flags().GetBool("create-upload-redirect")
 
 		syncOptions := wpengine.SyncOptions{
 			SkipMedia:     true,
@@ -356,23 +349,21 @@ var wpeDbImportCmd = &cobra.Command{
 		fmt.Printf("✅ Database imported successfully\n")
 		fmt.Printf("   📊 Rewritten URLs: %d (including media URLs)\n", result.RewrittenURLs)
 
-		// Create upload domain redirect plugin if requested
-		if createUploadRedirect {
-			fmt.Printf("🔌 Creating upload domain redirect plugin...\n")
+		// Create upload domain redirect plugin by default (or if explicitly requested)
+		fmt.Printf("🔌 Creating upload domain redirect plugin...\n")
+		
+		// Get install info to determine remote URL
+		info, err := client.GetInstallInfo()
+		if err == nil {
+			remoteURL := fmt.Sprintf("https://%s", info.Domain)
+			localProjectName := dbManager.GetProjectName()
+			localURL := fmt.Sprintf("https://%s.ddev.site", localProjectName)
 			
-			// Get install info to determine remote URL
-			info, err := client.GetInstallInfo()
-			if err == nil {
-				remoteURL := fmt.Sprintf("https://%s", info.Domain)
-				localProjectName := dbManager.GetProjectName()
-				localURL := fmt.Sprintf("https://%s.ddev.site", localProjectName)
-				
-				if err := dbManager.CreateUploadDomainRedirectPlugin(localURL, remoteURL); err != nil {
-					fmt.Printf("   ⚠️  Warning: Failed to create upload redirect plugin: %v\n", err)
-				}
-			} else {
-				fmt.Printf("   ⚠️  Warning: Could not get install info for plugin creation: %v\n", err)
+			if err := dbManager.CreateUploadDomainRedirectPlugin(localURL, remoteURL); err != nil {
+				fmt.Printf("   ⚠️  Warning: Failed to create upload redirect plugin: %v\n", err)
 			}
+		} else {
+			fmt.Printf("   ⚠️  Warning: Could not get install info for plugin creation: %v\n", err)
 		}
 
 		return nil
@@ -446,7 +437,6 @@ var wpeDbRewriteCmd = &cobra.Command{
 		client := wpengine.NewClient(*config)
 		
 		suppressDebug, _ := cmd.Flags().GetBool("suppress-debug")
-		createUploadRedirect, _ := cmd.Flags().GetBool("create-upload-redirect")
 
 		syncOptions := wpengine.SyncOptions{
 			SkipMedia:     true,
@@ -480,17 +470,14 @@ var wpeDbRewriteCmd = &cobra.Command{
 		fmt.Printf("✅ URL rewriting completed\n")
 		fmt.Printf("📊 Rewritten URLs: %d (including media URLs)\n", rewrittenURLs)
 
-		// Create upload domain redirect plugin if requested
-		if createUploadRedirect {
-			fmt.Printf("🔌 Creating upload domain redirect plugin...\n")
-			
-			dbManager := wpengine.NewDatabaseManager(projectPath, client)
-			localProjectName := dbManager.GetProjectName()
-			localURL := fmt.Sprintf("https://%s.ddev.site", localProjectName)
-			
-			if err := dbManager.CreateUploadDomainRedirectPlugin(localURL, remoteURL); err != nil {
-				fmt.Printf("   ⚠️  Warning: Failed to create upload redirect plugin: %v\n", err)
-			}
+		// Create upload domain redirect plugin by default (or if explicitly requested)
+		fmt.Printf("🔌 Creating upload domain redirect plugin...\n")
+		
+		localProjectName := dbManager.GetProjectName()
+		localDevelopmentURL := fmt.Sprintf("https://%s.ddev.site", localProjectName)
+		
+		if err := dbManager.CreateUploadDomainRedirectPlugin(localDevelopmentURL, remoteURL); err != nil {
+			fmt.Printf("   ⚠️  Warning: Failed to create upload redirect plugin: %v\n", err)
 		}
 
 		return nil
@@ -612,16 +599,16 @@ func init() {
 	wpeSyncCmd.Flags().Bool("skip-database", false, "skip syncing database")
 	wpeSyncCmd.Flags().Bool("delete-local", false, "delete local files not present on remote (WARNING: dangerous for development files)")
 	wpeSyncCmd.Flags().Bool("suppress-debug", false, "suppress WordPress debug notices and warnings for cleaner output")
-	wpeSyncCmd.Flags().Bool("create-upload-redirect", false, "create must-use plugin to redirect upload URLs to remote WP Engine domain")
+	wpeSyncCmd.Flags().Bool("create-upload-redirect", false, "explicitly create upload redirect plugin (automatically created when --skip-media is true)")
 
 	// Database download flags
 	wpeDbDownloadCmd.Flags().String("output", "", "output file path")
 
 	// Database import flags
 	wpeDbImportCmd.Flags().Bool("suppress-debug", false, "suppress WordPress debug notices and warnings for cleaner output")
-	wpeDbImportCmd.Flags().Bool("create-upload-redirect", false, "create must-use plugin to redirect upload URLs to remote WP Engine domain")
+	wpeDbImportCmd.Flags().Bool("create-upload-redirect", false, "create upload redirect plugin (created by default)")
 	
 	// Database rewrite flags  
 	wpeDbRewriteCmd.Flags().Bool("suppress-debug", false, "suppress WordPress debug notices and warnings for cleaner output")
-	wpeDbRewriteCmd.Flags().Bool("create-upload-redirect", false, "create must-use plugin to redirect upload URLs to remote WP Engine domain")
+	wpeDbRewriteCmd.Flags().Bool("create-upload-redirect", false, "create upload redirect plugin (created by default)")
 }

@@ -609,6 +609,32 @@ stax wpe list
 stax wpe info client-install
 ```
 
+**⚠️ Known Issue: Warp Terminal SSH Compatibility**
+
+If you're using [Warp terminal](https://www.warp.dev/) and experiencing SSH connection issues with WP Engine sidecars, this is a known compatibility bug. 
+
+**Symptoms:**
+- SSH connections to WP Engine hang or fail
+- `stax wpe sync` operations timeout during SSH operations
+- Manual SSH commands to `*.ssh.wpengine.net` don't work properly
+
+**Workaround:**
+Use an alternative terminal for WP Engine SSH operations:
+- **macOS**: Terminal.app, iTerm2, or Alacritty
+- **Linux**: GNOME Terminal, Konsole, or Alacritty  
+- **Cross-platform**: VS Code integrated terminal
+
+**Example:**
+```bash
+# In alternative terminal (not Warp)
+stax wpe sync client-install
+
+# Or run SSH commands directly
+ssh your-username@client-install.ssh.wpengine.net
+```
+
+This issue is specific to Warp's SSH handling and doesn't affect other Stax functionality.
+
 **Environment Port Conflicts:**
 
 ```bash

@@ -11,8 +11,8 @@ import (
 var deleteCmd = &cobra.Command{
 	Use:   "delete [project-name]",
 	Short: "Delete a DDEV project",
-	Long: `Delete a DDEV project, optionally removing all data including database.
-Use --omit-snapshot to remove all data including database and files.`,
+	Long: `Delete a DDEV project, removing all data including database by default.
+Use --omit-snapshot=false to preserve database snapshot.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectPath, _ := cmd.Flags().GetString("path")
@@ -50,6 +50,6 @@ func init() {
 	rootCmd.AddCommand(deleteCmd)
 
 	deleteCmd.Flags().StringP("path", "p", "", "path to project (default: current directory)")
-	deleteCmd.Flags().BoolP("omit-snapshot", "O", false, "omit database snapshot (remove all data)")
+	deleteCmd.Flags().BoolP("omit-snapshot", "O", true, "omit database snapshot - false to preserve database snapshot (default: true)")
 	deleteCmd.Flags().BoolP("yes", "y", false, "skip confirmation prompts")
 }

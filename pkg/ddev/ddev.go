@@ -127,6 +127,23 @@ func Status(projectPath string) error {
 	return cmd.Run()
 }
 
+func Describe(projectPath string) error {
+	if !IsInstalled() {
+		return fmt.Errorf("ddev is not installed or not in PATH")
+	}
+
+	if !IsProject(projectPath) {
+		return fmt.Errorf("no DDEV project found in %s", projectPath)
+	}
+
+	cmd := exec.Command("ddev", "describe")
+	cmd.Dir = projectPath
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
+}
+
 func Delete(projectPath, projectName string, omitSnapshot, yes bool) error {
 	if !IsInstalled() {
 		return fmt.Errorf("ddev is not installed or not in PATH")
@@ -152,8 +169,31 @@ func Delete(projectPath, projectName string, omitSnapshot, yes bool) error {
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin // Allow user input for confirmation
 
-	return cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	// Additional cleanup: remove DDEV-related files if they still exist and omitSnapshot is true
+	if omitSnapshot && projectName == "" {
+		filesToCleanup := []string{
+			filepath.Join(projectPath, ".ddev"),
+			filepath.Join(projectPath, "wp-config-ddev.php"),
+		}
+		
+		for _, file := range filesToCleanup {
+			if _, err := os.Stat(file); err == nil {
+				fmt.Printf("Cleaning up remaining file: %s\n", filepath.Base(file))
+				if err := os.RemoveAll(file); err != nil {
+					fmt.Printf("Warning: failed to remove %s: %v\n", file, err)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func Poweroff() error {

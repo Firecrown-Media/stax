@@ -253,6 +253,70 @@ func (dm *DatabaseManager) isDDEVProject() bool {
 	return true
 }
 
+func (dm *DatabaseManager) getTablePrefix() (string, error) {
+	// Try to detect table prefix using direct database query first (most reliable)
+	cmd := exec.Command("ddev", "mysql", "-e", "SHOW TABLES LIKE 'wp_%'", "-s", "-N")
+	cmd.Dir = dm.projectPath
+	output, err := cmd.CombinedOutput()
+	if err == nil && len(output) > 0 {
+		// Parse first table name to extract prefix
+		firstTable := strings.TrimSpace(strings.Split(string(output), "\n")[0])
+		if strings.Contains(firstTable, "_") {
+			// Find the prefix by looking for the pattern before a known WordPress table suffix
+			for _, suffix := range []string{"_options", "_posts", "_users", "_comments", "_postmeta"} {
+				if strings.HasSuffix(firstTable, suffix) {
+					return strings.TrimSuffix(firstTable, suffix) + "_", nil
+				}
+			}
+			// Fallback: assume everything before last underscore + underscore is the prefix
+			parts := strings.Split(firstTable, "_")
+			if len(parts) >= 2 {
+				prefix := strings.Join(parts[:len(parts)-1], "_") + "_"
+				fmt.Printf("Debug: Detected table prefix from database: %s\n", prefix)
+				return prefix, nil
+			}
+		}
+	}
+
+	// Fallback to WP-CLI if available and WordPress is configured
+	if dm.canUseWPCLI() {
+		cmd = exec.Command("ddev", "wp", "eval", "echo $wpdb->prefix;", "--skip-plugins", "--skip-themes", "--skip-packages", "--path=/var/www/html")
+		cmd.Dir = dm.projectPath
+		output, err = cmd.CombinedOutput()
+		if err == nil {
+			prefix := strings.TrimSpace(string(output))
+			if prefix != "" {
+				fmt.Printf("Debug: Detected table prefix via WP-CLI: %s\n", prefix)
+				return prefix, nil
+			}
+		}
+	}
+
+	// Final fallback: try to detect from any table that looks like WordPress
+	cmd = exec.Command("ddev", "mysql", "-e", "SHOW TABLES", "-s", "-N")
+	cmd.Dir = dm.projectPath
+	output, err = cmd.CombinedOutput()
+	if err == nil {
+		lines := strings.Split(string(output), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				// Look for WordPress-like table patterns
+				for _, suffix := range []string{"options", "posts", "users", "comments", "postmeta", "usermeta", "commentmeta"} {
+					if strings.HasSuffix(line, "_"+suffix) {
+						prefix := strings.TrimSuffix(line, "_"+suffix) + "_"
+						fmt.Printf("Debug: Detected table prefix from table pattern: %s\n", prefix)
+						return prefix, nil
+					}
+				}
+			}
+		}
+	}
+
+	fmt.Printf("Debug: Could not detect table prefix, using default: wp_\n")
+	return "wp_", fmt.Errorf("could not detect table prefix, using default wp_")
+}
+
 func (dm *DatabaseManager) canUseWPCLI() bool {
 	// First check if DDEV project exists
 	if !dm.isDDEVProject() {
@@ -339,11 +403,140 @@ func (dm *DatabaseManager) waitForWordPressReady() error {
 	return fmt.Errorf("WordPress not ready after %d attempts", maxAttempts)
 }
 
+// configureWordPressTablePrefix ensures WordPress wp-config.php and wp-config-ddev.php have the correct table prefix
+func (dm *DatabaseManager) configureWordPressTablePrefix() error {
+	// Detect the actual table prefix from the database
+	prefix, err := dm.getTablePrefix()
+	if err != nil {
+		return fmt.Errorf("could not detect table prefix: %w", err)
+	}
+
+	// If it's the default prefix, no configuration needed
+	if prefix == "wp_" {
+		return nil
+	}
+
+	fmt.Printf("Debug: Configuring WordPress to use table prefix: %s\n", prefix)
+
+	// Update both wp-config.php and wp-config-ddev.php if they exist
+	configFiles := []string{
+		filepath.Join(dm.projectPath, "wp-config.php"),
+		filepath.Join(dm.projectPath, "wp-config-ddev.php"),
+	}
+
+	configUpdated := false
+	for _, configPath := range configFiles {
+		if _, err := os.Stat(configPath); err == nil {
+			if err := dm.updateConfigFilePrefix(configPath, prefix); err != nil {
+				fmt.Printf("Warning: Failed to update %s: %v\n", filepath.Base(configPath), err)
+			} else {
+				configUpdated = true
+			}
+		}
+	}
+
+	// If no config files were updated, create a basic wp-config.php
+	if !configUpdated {
+		return dm.createWordPressConfigWithPrefix(prefix)
+	}
+
+	return nil
+}
+
+// updateConfigFilePrefix updates the table prefix in a specific config file
+func (dm *DatabaseManager) updateConfigFilePrefix(configPath, prefix string) error {
+	// Read existing config file
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("could not read %s: %w", configPath, err)
+	}
+
+	configStr := string(content)
+	
+	// Check if $table_prefix is already set correctly
+	if strings.Contains(configStr, fmt.Sprintf("$table_prefix = '%s';", prefix)) {
+		return nil // Already configured correctly
+	}
+
+	// Replace or add table prefix configuration
+	tablePrefixRegex := regexp.MustCompile(`\$table_prefix\s*=\s*['"]([^'"]*?)['"];`)
+	
+	if tablePrefixRegex.MatchString(configStr) {
+		// Replace existing table prefix
+		configStr = tablePrefixRegex.ReplaceAllString(configStr, fmt.Sprintf("$table_prefix = '%s';", prefix))
+		fmt.Printf("Debug: Updated existing table prefix in %s\n", filepath.Base(configPath))
+	} else {
+		// Add table prefix before the database constants
+		dbConstantsRegex := regexp.MustCompile(`(define\s*\(\s*['"]DB_NAME['"])`)
+		if dbConstantsRegex.MatchString(configStr) {
+			configStr = dbConstantsRegex.ReplaceAllString(configStr, fmt.Sprintf("$table_prefix = '%s';\n\n$1", prefix))
+			fmt.Printf("Debug: Added table prefix to %s\n", filepath.Base(configPath))
+		} else {
+			return fmt.Errorf("could not find suitable location to add table prefix in %s", configPath)
+		}
+	}
+
+	// Write the updated configuration
+	return os.WriteFile(configPath, []byte(configStr), 0644)
+}
+
+// createWordPressConfigWithPrefix creates a basic wp-config.php with the correct table prefix
+func (dm *DatabaseManager) createWordPressConfigWithPrefix(prefix string) error {
+	wpConfigPath := filepath.Join(dm.projectPath, "wp-config.php")
+	
+	// Basic wp-config.php content for DDEV with custom table prefix
+	configContent := fmt.Sprintf(`<?php
+// Database settings for DDEV
+define('DB_NAME', 'db');
+define('DB_USER', 'db');
+define('DB_PASSWORD', 'db');
+define('DB_HOST', 'db');
+define('DB_CHARSET', 'utf8mb4');
+define('DB_COLLATE', '');
+
+// Custom table prefix
+$table_prefix = '%s';
+
+// WordPress debugging
+define('WP_DEBUG', false);
+
+// WordPress security keys (minimal for local development)
+define('AUTH_KEY',         'local-dev-key');
+define('SECURE_AUTH_KEY',  'local-dev-key');
+define('LOGGED_IN_KEY',    'local-dev-key');
+define('NONCE_KEY',        'local-dev-key');
+define('AUTH_SALT',        'local-dev-key');
+define('SECURE_AUTH_SALT', 'local-dev-key');
+define('LOGGED_IN_SALT',   'local-dev-key');
+define('NONCE_SALT',       'local-dev-key');
+
+// WordPress directory structure
+if (!defined('ABSPATH')) {
+    define('ABSPATH', __DIR__ . '/');
+}
+
+require_once(ABSPATH . 'wp-settings.php');
+`, prefix)
+
+	err := os.WriteFile(wpConfigPath, []byte(configContent), 0644)
+	if err != nil {
+		return fmt.Errorf("could not create wp-config.php: %w", err)
+	}
+
+	fmt.Printf("Debug: Created wp-config.php with table prefix: %s\n", prefix)
+	return nil
+}
+
 func (dm *DatabaseManager) RewriteURLsPostSync(oldURL, newURL string, options SyncOptions) (int, error) {
 	// Wait for database to be ready first
 	if err := dm.waitForDatabaseReady(); err != nil {
 		fmt.Printf("Warning: Database not ready, falling back to SQL: %v\n", err)
 		return dm.rewriteURLsWithSQL(oldURL, newURL, options)
+	}
+
+	// Configure WordPress with correct table prefix if needed
+	if err := dm.configureWordPressTablePrefix(); err != nil {
+		fmt.Printf("Warning: Could not configure WordPress table prefix: %v\n", err)
 	}
 
 	// Wait for WordPress to be properly configured
@@ -384,7 +577,14 @@ func (dm *DatabaseManager) rewriteURLsWithSQL(oldURL, newURL string, options Syn
 		return 0, fmt.Errorf("no DDEV project found in %s. Please run 'stax init' or 'ddev config' to initialize a DDEV project first", dm.projectPath)
 	}
 
+	// Detect the table prefix
+	prefix, err := dm.getTablePrefix()
+	if err != nil {
+		fmt.Printf("Warning: Could not detect table prefix: %v\n", err)
+	}
+
 	fmt.Printf("Debug: Using comprehensive SQL-based URL rewriting from %s to %s\n", oldURL, newURL)
+	fmt.Printf("Debug: Using table prefix: %s\n", prefix)
 	fmt.Printf("Debug: All URLs including media URLs will be rewritten\n")
 	
 	// Use direct SQL UPDATE statements for comprehensive URL replacement
@@ -394,44 +594,44 @@ func (dm *DatabaseManager) rewriteURLsWithSQL(oldURL, newURL string, options Syn
 	
 	replacements := []string{
 		// Core WordPress options
-		fmt.Sprintf("UPDATE wp_options SET option_value = REPLACE(option_value, '%s', '%s');", oldURL, newURL),
-		fmt.Sprintf("UPDATE wp_options SET option_value = REPLACE(option_value, '%s', '%s');", oldURLHttp, newURL),
-		fmt.Sprintf("UPDATE wp_options SET option_value = REPLACE(option_value, '%s', '%s');", oldURLHttps, newURL),
+		fmt.Sprintf("UPDATE %soptions SET option_value = REPLACE(option_value, '%s', '%s');", prefix, oldURL, newURL),
+		fmt.Sprintf("UPDATE %soptions SET option_value = REPLACE(option_value, '%s', '%s');", prefix, oldURLHttp, newURL),
+		fmt.Sprintf("UPDATE %soptions SET option_value = REPLACE(option_value, '%s', '%s');", prefix, oldURLHttps, newURL),
 		
 		// Post content (includes media URLs in content)
-		fmt.Sprintf("UPDATE wp_posts SET post_content = REPLACE(post_content, '%s', '%s');", oldURL, newURL),
-		fmt.Sprintf("UPDATE wp_posts SET post_content = REPLACE(post_content, '%s', '%s');", oldURLHttp, newURL),
-		fmt.Sprintf("UPDATE wp_posts SET post_content = REPLACE(post_content, '%s', '%s');", oldURLHttps, newURL),
+		fmt.Sprintf("UPDATE %sposts SET post_content = REPLACE(post_content, '%s', '%s');", prefix, oldURL, newURL),
+		fmt.Sprintf("UPDATE %sposts SET post_content = REPLACE(post_content, '%s', '%s');", prefix, oldURLHttp, newURL),
+		fmt.Sprintf("UPDATE %sposts SET post_content = REPLACE(post_content, '%s', '%s');", prefix, oldURLHttps, newURL),
 		
 		// Post excerpts
-		fmt.Sprintf("UPDATE wp_posts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s');", oldURL, newURL),
-		fmt.Sprintf("UPDATE wp_posts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s');", oldURLHttp, newURL),
-		fmt.Sprintf("UPDATE wp_posts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s');", oldURLHttps, newURL),
+		fmt.Sprintf("UPDATE %sposts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s');", prefix, oldURL, newURL),
+		fmt.Sprintf("UPDATE %sposts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s');", prefix, oldURLHttp, newURL),
+		fmt.Sprintf("UPDATE %sposts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s');", prefix, oldURLHttps, newURL),
 		
 		// GUIDs (important for media attachments)
-		fmt.Sprintf("UPDATE wp_posts SET guid = REPLACE(guid, '%s', '%s');", oldURL, newURL),
-		fmt.Sprintf("UPDATE wp_posts SET guid = REPLACE(guid, '%s', '%s');", oldURLHttp, newURL),
-		fmt.Sprintf("UPDATE wp_posts SET guid = REPLACE(guid, '%s', '%s');", oldURLHttps, newURL),
+		fmt.Sprintf("UPDATE %sposts SET guid = REPLACE(guid, '%s', '%s');", prefix, oldURL, newURL),
+		fmt.Sprintf("UPDATE %sposts SET guid = REPLACE(guid, '%s', '%s');", prefix, oldURLHttp, newURL),
+		fmt.Sprintf("UPDATE %sposts SET guid = REPLACE(guid, '%s', '%s');", prefix, oldURLHttps, newURL),
 		
 		// Comments
-		fmt.Sprintf("UPDATE wp_comments SET comment_content = REPLACE(comment_content, '%s', '%s');", oldURL, newURL),
-		fmt.Sprintf("UPDATE wp_comments SET comment_content = REPLACE(comment_content, '%s', '%s');", oldURLHttp, newURL),
-		fmt.Sprintf("UPDATE wp_comments SET comment_content = REPLACE(comment_content, '%s', '%s');", oldURLHttps, newURL),
+		fmt.Sprintf("UPDATE %scomments SET comment_content = REPLACE(comment_content, '%s', '%s');", prefix, oldURL, newURL),
+		fmt.Sprintf("UPDATE %scomments SET comment_content = REPLACE(comment_content, '%s', '%s');", prefix, oldURLHttp, newURL),
+		fmt.Sprintf("UPDATE %scomments SET comment_content = REPLACE(comment_content, '%s', '%s');", prefix, oldURLHttps, newURL),
 		
 		// Post meta (includes serialized data)
-		fmt.Sprintf("UPDATE wp_postmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURL, newURL),
-		fmt.Sprintf("UPDATE wp_postmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURLHttp, newURL),
-		fmt.Sprintf("UPDATE wp_postmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURLHttps, newURL),
+		fmt.Sprintf("UPDATE %spostmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURL, newURL),
+		fmt.Sprintf("UPDATE %spostmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURLHttp, newURL),
+		fmt.Sprintf("UPDATE %spostmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURLHttps, newURL),
 		
 		// User meta (for user profile images, etc.)
-		fmt.Sprintf("UPDATE wp_usermeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURL, newURL),
-		fmt.Sprintf("UPDATE wp_usermeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURLHttp, newURL),
-		fmt.Sprintf("UPDATE wp_usermeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURLHttps, newURL),
+		fmt.Sprintf("UPDATE %susermeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURL, newURL),
+		fmt.Sprintf("UPDATE %susermeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURLHttp, newURL),
+		fmt.Sprintf("UPDATE %susermeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURLHttps, newURL),
 		
 		// Comment meta
-		fmt.Sprintf("UPDATE wp_commentmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURL, newURL),
-		fmt.Sprintf("UPDATE wp_commentmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURLHttp, newURL),
-		fmt.Sprintf("UPDATE wp_commentmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", oldURLHttps, newURL),
+		fmt.Sprintf("UPDATE %scommentmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURL, newURL),
+		fmt.Sprintf("UPDATE %scommentmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURLHttp, newURL),
+		fmt.Sprintf("UPDATE %scommentmeta SET meta_value = REPLACE(meta_value, '%s', '%s');", prefix, oldURLHttps, newURL),
 	}
 
 	totalReplacements := 0
@@ -543,8 +743,15 @@ func (dm *DatabaseManager) GetUploadsBaseURL() (string, error) {
 
 // GetOriginalUploadsURLFromDatabase gets the original uploads URL directly from the database before any URL rewriting
 func (dm *DatabaseManager) GetOriginalUploadsURLFromDatabase() (string, error) {
-	// Try to get the home URL from wp_options to determine the original domain
-	cmd := exec.Command("ddev", "mysql", "-e", "SELECT option_value FROM wp_options WHERE option_name = 'home' LIMIT 1;", "-s", "-N")
+	// Detect the table prefix
+	prefix, err := dm.getTablePrefix()
+	if err != nil {
+		fmt.Printf("Warning: Could not detect table prefix: %v\n", err)
+	}
+
+	// Try to get the home URL from options table to determine the original domain
+	query := fmt.Sprintf("SELECT option_value FROM %soptions WHERE option_name = 'home' LIMIT 1;", prefix)
+	cmd := exec.Command("ddev", "mysql", "-e", query, "-s", "-N")
 	cmd.Dir = dm.projectPath
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -724,6 +931,12 @@ func (dm *DatabaseManager) replaceInContentWithMediaExclusion(oldURL, newURL str
 		fmt.Printf("Debug: Excluding media URL pattern %d: %s\n", i+1, mediaURL)
 	}
 	
+	// Get table prefix
+	prefix, err := dm.getTablePrefix()
+	if err != nil {
+		fmt.Printf("Warning: Could not detect table prefix: %v\n", err)
+	}
+
 	// Build SQL exclusion conditions for ALL media URL patterns
 	// These conditions ensure rows containing media URLs are NEVER updated
 	var excludeConditions []string
@@ -735,20 +948,20 @@ func (dm *DatabaseManager) replaceInContentWithMediaExclusion(oldURL, newURL str
 	// SQL queries that ONLY update content that does NOT contain any media URL patterns
 	queries := []string{
 		// Update post content ONLY if it contains the old URL AND does NOT contain any media URL patterns
-		fmt.Sprintf("UPDATE wp_posts SET post_content = REPLACE(post_content, '%s', '%s') WHERE post_content LIKE '%%%s%%' AND %s;", 
-			oldURL, newURL, oldURL, excludeClause),
+		fmt.Sprintf("UPDATE %sposts SET post_content = REPLACE(post_content, '%s', '%s') WHERE post_content LIKE '%%%s%%' AND %s;", 
+			prefix, oldURL, newURL, oldURL, excludeClause),
 		
 		// Update post excerpts ONLY if they contain the old URL AND do NOT contain any media URL patterns  
-		fmt.Sprintf("UPDATE wp_posts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s') WHERE post_excerpt LIKE '%%%s%%' AND %s;", 
-			oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "post_excerpt", -1)),
+		fmt.Sprintf("UPDATE %sposts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s') WHERE post_excerpt LIKE '%%%s%%' AND %s;", 
+			prefix, oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "post_excerpt", -1)),
 		
 		// Update comments ONLY if they contain the old URL AND do NOT contain any media URL patterns
-		fmt.Sprintf("UPDATE wp_comments SET comment_content = REPLACE(comment_content, '%s', '%s') WHERE comment_content LIKE '%%%s%%' AND %s;", 
-			oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "comment_content", -1)),
+		fmt.Sprintf("UPDATE %scomments SET comment_content = REPLACE(comment_content, '%s', '%s') WHERE comment_content LIKE '%%%s%%' AND %s;", 
+			prefix, oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "comment_content", -1)),
 		
 		// Update meta values ONLY if they contain the old URL AND do NOT contain any media URL patterns
-		fmt.Sprintf("UPDATE wp_postmeta SET meta_value = REPLACE(meta_value, '%s', '%s') WHERE meta_value LIKE '%%%s%%' AND %s;", 
-			oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "meta_value", -1)),
+		fmt.Sprintf("UPDATE %spostmeta SET meta_value = REPLACE(meta_value, '%s', '%s') WHERE meta_value LIKE '%%%s%%' AND %s;", 
+			prefix, oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "meta_value", -1)),
 	}
 
 	count := 0
@@ -790,6 +1003,12 @@ func (dm *DatabaseManager) replaceInContentPreservingMediaURLs(oldURL, newURL st
 		fmt.Printf("Debug: Will preserve media URL pattern %d: %s\n", i+1, mediaURL)
 	}
 	
+	// Get table prefix
+	prefix, err := dm.getTablePrefix()
+	if err != nil {
+		fmt.Printf("Warning: Could not detect table prefix: %v\n", err)
+	}
+
 	// Build SQL conditions to exclude ALL media URL patterns
 	var excludeConditions []string
 	for _, mediaURL := range mediaURLsToPreserve {
@@ -799,16 +1018,16 @@ func (dm *DatabaseManager) replaceInContentPreservingMediaURLs(oldURL, newURL st
 	
 	queries := []string{
 		// Replace URLs in post content, but NOT if they contain any of the media URL patterns
-		fmt.Sprintf("UPDATE wp_posts SET post_content = REPLACE(post_content, '%s', '%s') WHERE post_content LIKE '%%%s%%' AND %s;", 
-			oldURL, newURL, oldURL, excludeClause),
+		fmt.Sprintf("UPDATE %sposts SET post_content = REPLACE(post_content, '%s', '%s') WHERE post_content LIKE '%%%s%%' AND %s;", 
+			prefix, oldURL, newURL, oldURL, excludeClause),
 		
 		// Replace URLs in post excerpts, but NOT if they contain any of the media URL patterns  
-		fmt.Sprintf("UPDATE wp_posts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s') WHERE post_excerpt LIKE '%%%s%%' AND %s;", 
-			oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "post_excerpt", -1)),
+		fmt.Sprintf("UPDATE %sposts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s') WHERE post_excerpt LIKE '%%%s%%' AND %s;", 
+			prefix, oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "post_excerpt", -1)),
 		
 		// Replace URLs in comments, but NOT if they contain any of the media URL patterns
-		fmt.Sprintf("UPDATE wp_comments SET comment_content = REPLACE(comment_content, '%s', '%s') WHERE comment_content LIKE '%%%s%%' AND %s;", 
-			oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "comment_content", -1)),
+		fmt.Sprintf("UPDATE %scomments SET comment_content = REPLACE(comment_content, '%s', '%s') WHERE comment_content LIKE '%%%s%%' AND %s;", 
+			prefix, oldURL, newURL, oldURL, strings.Replace(excludeClause, "post_content", "comment_content", -1)),
 	}
 
 	count := 0
@@ -846,21 +1065,27 @@ func (dm *DatabaseManager) replaceInContentPreservingMedia(oldURL, newURL, origi
 	fmt.Printf("Debug: Replacing %s with %s in content, preserving media URLs pointing to %s\n", oldURL, newURL, remoteMediaURL)
 	fmt.Printf("Debug: Original uploads URL to preserve: %s\n", originalUploadsURL)
 	
+	// Get table prefix
+	prefix, err := dm.getTablePrefix()
+	if err != nil {
+		fmt.Printf("Warning: Could not detect table prefix: %v\n", err)
+	}
+
 	// Use the original uploads URL from the database instead of reconstructing it
 	oldUploadPath := originalUploadsURL
 	
 	queries := []string{
 		// Replace URLs in post content, but NOT if they contain /wp-content/uploads
-		fmt.Sprintf("UPDATE wp_posts SET post_content = REPLACE(post_content, '%s', '%s') WHERE post_content LIKE '%%%s%%' AND post_content NOT LIKE '%%%s%%';", 
-			oldURL, newURL, oldURL, oldUploadPath),
+		fmt.Sprintf("UPDATE %sposts SET post_content = REPLACE(post_content, '%s', '%s') WHERE post_content LIKE '%%%s%%' AND post_content NOT LIKE '%%%s%%';", 
+			prefix, oldURL, newURL, oldURL, oldUploadPath),
 		
 		// Replace URLs in post excerpts, but NOT if they contain /wp-content/uploads  
-		fmt.Sprintf("UPDATE wp_posts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s') WHERE post_excerpt LIKE '%%%s%%' AND post_excerpt NOT LIKE '%%%s%%';", 
-			oldURL, newURL, oldURL, oldUploadPath),
+		fmt.Sprintf("UPDATE %sposts SET post_excerpt = REPLACE(post_excerpt, '%s', '%s') WHERE post_excerpt LIKE '%%%s%%' AND post_excerpt NOT LIKE '%%%s%%';", 
+			prefix, oldURL, newURL, oldURL, oldUploadPath),
 		
 		// Replace URLs in comments, but NOT if they contain /wp-content/uploads
-		fmt.Sprintf("UPDATE wp_comments SET comment_content = REPLACE(comment_content, '%s', '%s') WHERE comment_content LIKE '%%%s%%' AND comment_content NOT LIKE '%%%s%%';", 
-			oldURL, newURL, oldURL, oldUploadPath),
+		fmt.Sprintf("UPDATE %scomments SET comment_content = REPLACE(comment_content, '%s', '%s') WHERE comment_content LIKE '%%%s%%' AND comment_content NOT LIKE '%%%s%%';", 
+			prefix, oldURL, newURL, oldURL, oldUploadPath),
 	}
 
 	count := 0
@@ -1004,7 +1229,9 @@ func (dm *DatabaseManager) DiagnoseMediaURLRouting() error {
 	}
 
 	// Check a sample attachment URL directly from database
-	cmd := exec.Command("ddev", "mysql", "-e", "SELECT guid FROM wp_posts WHERE post_type = 'attachment' AND guid LIKE '%/wp-content/uploads/%' LIMIT 3;", "-s", "-N")
+	prefix, _ := dm.getTablePrefix()
+	query := fmt.Sprintf("SELECT guid FROM %sposts WHERE post_type = 'attachment' AND guid LIKE '%%/wp-content/uploads/%%' LIMIT 3;", prefix)
+	cmd := exec.Command("ddev", "mysql", "-e", query, "-s", "-N")
 	cmd.Dir = dm.projectPath
 	output, err := cmd.CombinedOutput()
 	if err == nil && len(output) > 0 {

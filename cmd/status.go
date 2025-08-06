@@ -22,8 +22,20 @@ var statusCmd = &cobra.Command{
 			projectPath = cwd
 		}
 
+		// Show general DDEV project list
+		fmt.Printf("📋 DDEV Projects Overview:\n")
+		fmt.Printf("========================\n")
 		if err := ddev.Status(projectPath); err != nil {
 			return fmt.Errorf("failed to get DDEV status: %w", err)
+		}
+
+		// If we're in a DDEV project directory, also show detailed info
+		if ddev.IsProject(projectPath) {
+			fmt.Printf("\n🔍 Current Project Details:\n")
+			fmt.Printf("==========================\n")
+			if err := ddev.Describe(projectPath); err != nil {
+				fmt.Printf("⚠️  Failed to get project details: %v\n", err)
+			}
 		}
 
 		return nil

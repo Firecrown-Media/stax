@@ -29,6 +29,7 @@ This guide walks through the complete development lifecycle from initial setup t
 Before starting, ensure you have:
 
 ### System Requirements
+
 - **macOS** (Intel or Apple Silicon) or **Linux**
 - **Docker Desktop** installed and running
 - **Git** configured with your credentials
@@ -36,6 +37,7 @@ Before starting, ensure you have:
 - **WP Engine account access** (contact your team lead)
 
 ### Required Accounts & Permissions
+
 - **GitHub**: Access to Firecrown-Media organization repositories
 - **WP Engine**: Account with API and SSH access to client installations
 - **SSH Key**: Added to your WP Engine account (see setup below)
@@ -76,7 +78,7 @@ make install-deps
 # Verify DDEV is available
 ddev version
 
-# Verify WP-CLI is available  
+# Verify WP-CLI is available
 wp --info
 ```
 
@@ -98,6 +100,7 @@ cat ~/.ssh/id_rsa.pub | xclip -selection clipboard
 ```
 
 **Add SSH key to WP Engine:**
+
 1. Log into [WP Engine User Portal](https://my.wpengine.com/)
 2. Navigate to **SSH Gateway** → **SSH Keys**
 3. Click **Add Public Key**
@@ -105,9 +108,22 @@ cat ~/.ssh/id_rsa.pub | xclip -selection clipboard
 
 **Reference:** [WP Engine SSH Key Setup](https://wpengine.com/support/ssh-gateway/#Add_SSH_Key)
 
+**⚠️ Important: Terminal Compatibility Note**
+
+If you're using [Warp terminal](https://www.warp.dev/), you may experience SSH connection issues with WP Engine. This is a known compatibility bug between Warp and WP Engine's SSH sidecars.
+
+**If using Warp, switch to an alternative terminal for WP Engine operations:**
+
+- **macOS**: Terminal.app, iTerm2, Alacritty
+- **Linux**: GNOME Terminal, Konsole, Alacritty
+- **Cross-platform**: VS Code integrated terminal
+
+You can continue using Warp for all other development tasks - this only affects SSH connections to WP Engine.
+
 ### Configure WP Engine API Access
 
 **Get API credentials:**
+
 1. Contact your Firecrown team lead for WP Engine API access
 2. Follow [WP Engine API Setup Guide](https://wpengine.com/support/enabling-wp-engine-api/)
 3. Save credentials securely (use a password manager)
@@ -143,7 +159,7 @@ hosting:
   wpengine:
     username: "your-wpe-username"
     sync_defaults:
-      skip_media: true  # Use production CDN for faster sync
+      skip_media: true # Use production CDN for faster sync
       exclude_dirs:
         - "wp-content/cache/"
         - "wp-content/uploads/backup-*"
@@ -173,6 +189,7 @@ ls -la stax.yaml  # Project-specific Stax config
 ```
 
 **Example project structure:**
+
 ```
 client-website/
 ├── .git/
@@ -220,8 +237,8 @@ wordpress:
 # WP Engine integration
 hosting:
   wpengine:
-    install_name: "clientwebsite"  # WP Engine installation name
-    environment: "production"      # Default sync source
+    install_name: "clientwebsite" # WP Engine installation name
+    environment: "production" # Default sync source
 
 # Client-specific plugins
 plugins:
@@ -251,7 +268,7 @@ stax wpe sync clientwebsite
 
 ```bash
 # For faster sync, get database only and use production CDN for media
-stax wpe sync clientwebsite --skip-files
+stax wpe sync clientwebsite --skip-meda=true
 
 # This is recommended for regular development work
 ```
@@ -273,6 +290,7 @@ echo "https://client-website-local.ddev.site"
 ```
 
 **Login to WordPress admin:**
+
 - URL: `https://client-website-local.ddev.site/wp-admin`
 - Username: `fcadmin` (from your global config)
 - Password: Check with team lead or reset via WP-CLI
@@ -385,46 +403,46 @@ name: Deploy to WP Engine Staging
 
 on:
   pull_request:
-    branches: [ main ]
-    types: [ opened, synchronize ]
+    branches: [main]
+    types: [opened, synchronize]
 
 jobs:
   deploy-staging:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        
-    - name: Install dependencies
-      run: npm install
-      
-    - name: Build assets
-      run: npm run build
-      
-    - name: Deploy to WP Engine Staging
-      uses: wpengine/github-action-wpe-site-deploy@v3
-      with:
-        WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPE_SSHG_KEY_PRIVATE }}
-        WPE_ENV: staging
-        SRC_PATH: "wp-content"
-        REMOTE_PATH: "wp-content" 
-        
-    - name: Comment on PR
-      uses: actions/github-script@v6
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '🚀 Deployed to staging: https://clientwebsite-staging.wpengine.com'
-          })
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Deploy to WP Engine Staging
+        uses: wpengine/github-action-wpe-site-deploy@v3
+        with:
+          WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPE_SSHG_KEY_PRIVATE }}
+          WPE_ENV: staging
+          SRC_PATH: "wp-content"
+          REMOTE_PATH: "wp-content"
+
+      - name: Comment on PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Deployed to staging: https://clientwebsite-staging.wpengine.com'
+            })
 ```
 
 ### Automatic Staging Deployment
@@ -436,6 +454,7 @@ When you create the PR, GitHub Actions automatically:
 3. **Comments on PR** with staging URL
 
 **Monitor deployment:**
+
 ```bash
 # Check GitHub Actions status
 gh run list --branch feature/hero-section-update
@@ -460,18 +479,21 @@ open https://clientwebsite-staging.wpengine.com
 ### Staging Testing Checklist
 
 **Frontend Testing:**
+
 - ✅ Hero section displays correctly
 - ✅ Responsive design works on mobile/tablet
 - ✅ No layout issues or broken elements
 - ✅ Page load speed acceptable
 
 **Backend Testing:**
+
 - ✅ WordPress admin accessible
 - ✅ No PHP errors in logs
 - ✅ All plugins functioning
 - ✅ Theme customizations preserved
 
 **Client Review:**
+
 - Share staging URL with client
 - Gather feedback and approval
 - Document any requested changes
@@ -505,6 +527,7 @@ git push origin feature/hero-section-update
 ### PR Review Process
 
 **Team Review:**
+
 ```bash
 # Request review from team lead
 gh pr edit feature/hero-section-update --add-reviewer @team-lead-username
@@ -514,6 +537,7 @@ gh pr edit feature/hero-section-update --add-label "ready-for-production"
 ```
 
 **Final Testing:**
+
 - ✅ Code review completed
 - ✅ Client approval received
 - ✅ Staging tests passed
@@ -523,6 +547,7 @@ gh pr edit feature/hero-section-update --add-label "ready-for-production"
 ### Approve and Merge PR
 
 **Team Lead approval:**
+
 ```bash
 # Team lead reviews and approves
 gh pr review feature/hero-section-update --approve --body "Changes look good. Client approved staging. Ready for production deployment."
@@ -544,42 +569,42 @@ name: Deploy to WP Engine Production
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy-production:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        
-    - name: Install dependencies
-      run: npm install
-      
-    - name: Build production assets
-      run: npm run build:production
-      
-    - name: Deploy to WP Engine Production
-      uses: wpengine/github-action-wpe-site-deploy@v3
-      with:
-        WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPE_SSHG_KEY_PRIVATE }}
-        WPE_ENV: production
-        SRC_PATH: "wp-content"
-        REMOTE_PATH: "wp-content"
-        
-    - name: Notify team
-      uses: 8398a7/action-slack@v3
-      with:
-        status: ${{ job.status }}
-        text: "🚀 Production deployment complete: https://clientwebsite.com"
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build production assets
+        run: npm run build:production
+
+      - name: Deploy to WP Engine Production
+        uses: wpengine/github-action-wpe-site-deploy@v3
+        with:
+          WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPE_SSHG_KEY_PRIVATE }}
+          WPE_ENV: production
+          SRC_PATH: "wp-content"
+          REMOTE_PATH: "wp-content"
+
+      - name: Notify team
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: "🚀 Production deployment complete: https://clientwebsite.com"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 ```
 
 ### Automatic Production Deployment
@@ -592,6 +617,7 @@ When the PR is merged to `main`:
 4. **Team notification** sent via Slack/email
 
 **Monitor production deployment:**
+
 ```bash
 # Check deployment status
 gh run list --branch main --limit 1
@@ -607,6 +633,7 @@ gh run view --log
 ### Production Testing
 
 **Immediate checks:**
+
 ```bash
 # Check site accessibility
 curl -I https://clientwebsite.com
@@ -616,6 +643,7 @@ curl -s https://clientwebsite.com | grep -i "hero-section" && echo "✅ Hero sec
 ```
 
 **Comprehensive testing:**
+
 - ✅ Site loads correctly
 - ✅ New hero section visible
 - ✅ No broken functionality
@@ -625,12 +653,14 @@ curl -s https://clientwebsite.com | grep -i "hero-section" && echo "✅ Hero sec
 ### Post-Deployment Checklist
 
 **Monitor for issues:**
+
 - Check error logs in WP Engine portal
 - Monitor site performance
 - Verify analytics tracking still works
 - Test contact forms and key functionality
 
 **Client notification:**
+
 ```bash
 # Send deployment notification
 echo "✅ Hero section feature deployed to production
@@ -647,6 +677,7 @@ mail -s "Feature Deployment Complete" client@example.com
 ## Complete Workflow Summary
 
 **Local Development:**
+
 1. ✅ Install Stax and configure WP Engine access
 2. ✅ Clone client repository
 3. ✅ Initialize local environment with `stax init`
@@ -654,21 +685,11 @@ mail -s "Feature Deployment Complete" client@example.com
 5. ✅ Make development changes
 6. ✅ Test locally
 
-**Git Workflow:**
-7. ✅ Create feature branch
-8. ✅ Commit changes
-9. ✅ Push branch and create PR
+**Git Workflow:** 7. ✅ Create feature branch 8. ✅ Commit changes 9. ✅ Push branch and create PR
 
-**Staging Deployment:**
-10. ✅ GitHub Actions deploys to staging automatically
-11. ✅ Test in staging environment
-12. ✅ Get client approval
+**Staging Deployment:** 10. ✅ GitHub Actions deploys to staging automatically 11. ✅ Test in staging environment 12. ✅ Get client approval
 
-**Production Deployment:**
-13. ✅ Team review and PR approval
-14. ✅ Merge to main branch
-15. ✅ GitHub Actions deploys to production automatically
-16. ✅ Verify production deployment
+**Production Deployment:** 13. ✅ Team review and PR approval 14. ✅ Merge to main branch 15. ✅ GitHub Actions deploys to production automatically 16. ✅ Verify production deployment
 
 ---
 
@@ -715,17 +736,20 @@ gh run view --log
 ## Next Steps
 
 **For ongoing development:**
+
 - Use `stax wpe sync --skip-files` for regular database updates
 - Create feature branches for each new task
 - Follow the same staging → production workflow
 - Keep local environment updated with `brew upgrade stax`
 
 **Advanced workflows:**
+
 - Learn hot swap for testing different PHP versions: `stax swap preset modern`
 - Use batch operations for multi-client projects
 - Explore Stax automation features for repetitive tasks
 
 **Team collaboration:**
+
 - Share Stax configurations via project `stax.yaml` files
 - Document client-specific requirements
 - Contribute improvements back to Stax development
@@ -735,12 +759,14 @@ gh run view --log
 ## Support
 
 **For help:**
+
 - **Command help**: `stax --help` or `stax [command] --help`
 - **Team support**: Contact your Firecrown team lead
 - **Technical issues**: [GitHub Issues](https://github.com/Firecrown-Media/stax/issues)
 - **WP Engine support**: WP Engine customer portal
 
 **Resources:**
+
 - [Stax Documentation](https://github.com/Firecrown-Media/stax/blob/main/README.md)
 - [WP Engine Developer Portal](https://wpengine.com/developers/)
 - [DDEV Documentation](https://ddev.readthedocs.io/)
