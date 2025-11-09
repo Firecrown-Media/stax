@@ -1,93 +1,510 @@
-# Stax - WordPress Development CLI
+# Stax
 
-A powerful command-line tool that streamlines WordPress development with DDEV and seamless hosting provider integration.
+**A powerful CLI tool for WordPress multisite development with seamless hosting integration.**
 
-## What is Stax?
-
-Stax automates the complex setup of local WordPress development environments. It manages Docker containers through DDEV, syncs with hosting providers like WP Engine, and enables instant PHP/MySQL version switching without data loss. Built for teams managing multiple client sites.
-
-## Quick Start (5 minutes)
-
-```bash
-# 1. Install dependencies
-brew install docker ddev/ddev/ddev
-
-# 2. Install Stax
-brew tap firecrown-media/stax
-brew install stax
-
-# 3. Create your first WordPress site
-stax init my-first-site
-stax setup my-first-site --install-wp
-stax start my-first-site
-
-# 4. Visit your site
-open https://my-first-site.ddev.site
-```
-
-That's it! You now have a fully functional WordPress development environment.
-
-## Documentation
-
-- **[Setup Guide](docs/SETUP.md)** - Complete installation and configuration instructions
-- **[User Guide](docs/USER_GUIDE.md)** - Daily usage, workflows, and best practices
-- **[WP Engine Guide](docs/WPENGINE.md)** - Hosting integration and syncing
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Development](docs/DEVELOPMENT.md)** - Contributing to Stax
-- **[Multisite](docs/MULTISITE.md)** - WordPress Multisite setup and management
-
-## Quick Command Reference
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `stax init [name]` | Create new project | `stax init client-site` |
-| `stax start [name]` | Start development environment | `stax start client-site` |
-| `stax stop [name]` | Stop development environment | `stax stop client-site` |
-| `stax status` | Show all running environments | `stax status` |
-| `stax wpe sync [install]` | Sync from WP Engine | `stax wpe sync clientinstall` |
-| `stax swap php [version]` | Change PHP version | `stax swap php 8.3` |
-| `stax swap preset [name]` | Apply environment preset | `stax swap preset modern` |
-| `stax wp [command]` | Run WP-CLI commands | `stax wp plugin list` |
-
-## Key Features
-
-✅ **Rapid Setup** - WordPress sites ready in under 2 minutes
-✅ **Hot Swap** - Change PHP/MySQL versions without losing data
-✅ **WP Engine Integration** - One-command production sync
-✅ **Multi-Project** - Manage dozens of sites simultaneously
-✅ **Team Friendly** - Shared configurations for consistency
-
-## System Requirements
-
-- macOS or Linux
-- Docker Desktop (or compatible Docker provider)
-- DDEV
-- Homebrew (for easy installation)
-
-For detailed requirements and installation instructions, see the [Setup Guide](docs/SETUP.md).
-
-## Getting Help
-
-- **Documentation**: Start with our [User Guide](docs/USER_GUIDE.md)
-- **Issues**: [Report bugs or request features](https://github.com/Firecrown-Media/stax/issues)
-- **Support**: Contact dev@firecrown.com
-
-## Contributing
-
-We welcome contributions! See our [Development Guide](docs/DEVELOPMENT.md) for information on:
-- Setting up the development environment
-- Code structure and architecture
-- Adding new features
-- Submitting pull requests
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Project Status
-
-Actively maintained by Firecrown Media. Built specifically for agency WordPress development workflows but designed to be extensible for other use cases.
+Stax automates your entire WordPress multisite development workflow - from environment setup to database syncing - so you can focus on building great sites instead of wrestling with configuration.
 
 ---
 
-**Quick Links**: [Setup](docs/SETUP.md) | [User Guide](docs/USER_GUIDE.md) | [Troubleshooting](docs/TROUBLESHOOTING.md) | [WP Engine](docs/WPENGINE.md)
+## What is Stax?
+
+Stax is a command-line tool designed to make WordPress multisite development as simple as possible. Whether you're a junior developer getting started or a senior developer managing multiple projects, Stax handles the complex parts of local development automatically.
+
+**In one command, Stax will:**
+- Set up a complete WordPress multisite environment
+- Clone your codebase from GitHub
+- Pull your production database from WPEngine
+- Configure all your subsites with the correct local domains
+- Handle SSL certificates automatically
+- Start your development server
+
+## Key Features
+
+- **One-Command Setup** - Go from zero to running WordPress in under 5 minutes
+- **Automatic Database Sync** - Pull databases from WPEngine with automatic URL replacement
+- **Multisite Made Easy** - Full support for subdomain and subdirectory multisite
+- **Remote Media Proxying** - Access production media without downloading gigabytes of files
+- **Safe Database Snapshots** - Create restore points before risky operations
+- **Team-Friendly** - Share configuration files via Git, everyone gets identical environments
+- **Build Automation** - Automatically runs Composer, npm, and build scripts
+- **Secure Credentials** - Stores API keys and passwords safely in macOS Keychain
+
+## Quick Example
+
+```bash
+# First time setup (one-time)
+stax setup
+
+# Initialize a project
+cd ~/Sites/my-project
+stax init
+
+# Your WordPress multisite is now running at:
+# https://myproject.local
+# https://site1.myproject.local
+# https://site2.myproject.local
+```
+
+That's it! You now have a fully configured WordPress multisite development environment.
+
+## Who Should Use Stax?
+
+**Stax is perfect for:**
+- WordPress developers working with multisite
+- Teams using WPEngine hosting
+- Developers who want consistent local environments
+- Anyone tired of manual database imports and search-replace
+- Teams transitioning from LocalWP to a more automated workflow
+
+**You should use Stax if you:**
+- Work with WordPress multisite (subdomain or subdirectory mode)
+- Need to frequently sync databases from production/staging
+- Want identical development environments across your team
+- Prefer command-line tools over GUI applications
+- Work on Mac (macOS 12 Monterey or later)
+
+## Installation
+
+### Quick Install (Recommended)
+
+```bash
+# Install via Homebrew
+brew tap Firecrown-Media/stax
+brew install stax
+
+# Verify installation
+stax --version
+```
+
+### Build from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/firecrown-media/stax.git
+cd stax
+
+# Build and install
+make build
+make install
+
+# Verify installation
+stax --version
+```
+
+**Full installation guide:** [docs/INSTALLATION.md](./docs/INSTALLATION.md)
+
+## Prerequisites
+
+Before using Stax, you'll need:
+
+- **macOS 12+** (Monterey or later) - macOS only for now
+- **Docker Desktop** - For running containers ([Download](https://www.docker.com/products/docker-desktop))
+- **DDEV** - Container platform for WordPress ([Install Guide](https://ddev.readthedocs.io/en/stable/users/install/))
+- **WPEngine Account** - With API access (if using WPEngine features)
+
+Don't worry - our installation guide walks you through setting up each prerequisite.
+
+## Quick Start
+
+### 1. Configure Your Credentials
+
+First, store your WPEngine and GitHub credentials securely:
+
+```bash
+stax setup
+```
+
+This will prompt you for:
+- WPEngine API username
+- WPEngine API password
+- GitHub personal access token (for private repos)
+- SSH key for WPEngine
+
+All credentials are stored securely in macOS Keychain.
+
+### 2. Initialize Your First Project
+
+```bash
+cd ~/Sites/my-multisite-project
+stax init
+```
+
+Stax will interactively ask you:
+- Project name
+- Multisite mode (subdomain or subdirectory)
+- Network domain (e.g., `mysite.local`)
+- WPEngine install name
+- Which environment to pull from (production/staging)
+- GitHub repository URL
+- Your brand sites and domains
+
+### 3. Start Developing
+
+```bash
+# Your environment is already running!
+# Check the status
+stax status
+
+# Make some changes, then refresh the database
+stax db pull
+
+# SSH into the container
+stax ssh
+
+# View logs
+stax logs -f
+
+# Stop when done for the day
+stax stop
+
+# Restart tomorrow
+stax start
+```
+
+**Detailed walkthrough:** [docs/QUICK_START.md](./docs/QUICK_START.md)
+
+## Common Commands
+
+```bash
+# Environment Management
+stax start                    # Start your development environment
+stax stop                     # Stop your environment
+stax restart                  # Restart your environment
+stax status                   # Show environment status
+stax doctor                   # Diagnose issues
+
+# Database Operations
+stax db pull                  # Pull database from WPEngine
+stax db snapshot              # Create a database backup
+stax db restore <name>        # Restore a snapshot
+stax db list                  # List all snapshots
+
+# Configuration
+stax config list              # Show your configuration
+stax config set <key> <value> # Update a setting
+
+# WordPress Management
+stax wp <command>             # Run any WP-CLI command
+stax wp plugin list           # List plugins
+stax wp site list             # List all subsites
+stax wp cache flush           # Flush WordPress cache
+
+# Build and Development
+stax build                    # Run build process
+stax dev                      # Start dev mode (with watch)
+stax lint                     # Run code linters
+```
+
+**Full command reference:** [docs/COMMAND_REFERENCE.md](./docs/COMMAND_REFERENCE.md)
+
+## Documentation
+
+### Quick Reference
+- **Man Page**: `man stax` - Complete command reference
+- **Quick Help**: `stax --help` - Interactive help
+- **Online Docs**: See `docs/` directory
+
+### Getting Started
+- [Installation Guide](./docs/INSTALLATION.md) - Detailed installation instructions
+- [Quick Start](./docs/QUICK_START.md) - Get up and running in 5 minutes
+- [User Guide](./docs/USER_GUIDE.md) - Comprehensive usage guide
+
+### Workflows
+- [Working with Multisite](./docs/MULTISITE.md) - Multisite-specific features
+- [WPEngine Integration](./docs/WPENGINE.md) - WPEngine features and setup
+- [Real-World Examples](./docs/EXAMPLES.md) - Common scenarios and workflows
+
+### Reference
+- [Command Reference](./docs/COMMAND_REFERENCE.md) - All commands and options
+- [Configuration](./docs/CONFIG_SPEC.md) - Configuration file reference
+- [Man Page Guide](./docs/MAN_PAGE.md) - Using the man page
+- [FAQ](./docs/FAQ.md) - Frequently asked questions
+- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Common issues and solutions
+
+### Advanced
+- [Architecture](./docs/ARCHITECTURE.md) - System architecture and design
+- [Build Process](./docs/BUILD_PROCESS.md) - How builds work
+- [Provider System](./docs/MULTI_PROVIDER.md) - Multi-provider support
+
+## How It Works
+
+Stax uses industry-standard, battle-tested tools:
+
+1. **DDEV** - Manages Docker containers for WordPress, MySQL, and other services
+2. **WP-CLI** - Handles WordPress operations and database imports
+3. **WPEngine API** - Pulls databases and syncs files from your hosting
+4. **macOS Keychain** - Securely stores your credentials
+5. **Git** - Clones your repositories and manages code
+
+When you run `stax init`, here's what happens:
+
+```
+1. Validates your WPEngine credentials
+2. Clones your GitHub repository
+3. Detects PHP/MySQL versions from WPEngine
+4. Generates DDEV configuration
+5. Starts Docker containers
+6. Installs Composer and npm dependencies
+7. Runs your build scripts
+8. Pulls the database from WPEngine
+9. Imports and runs search-replace automatically
+10. Displays your local URLs
+
+Total time: 2-5 minutes
+```
+
+## Why Stax?
+
+### vs. LocalWP
+
+| Feature | LocalWP | Stax |
+|---------|---------|------|
+| **Setup Speed** | 10-30 minutes | 2-5 minutes |
+| **Automation** | Mostly manual | Fully automated |
+| **CLI Support** | Limited | Full CLI |
+| **Multisite Subdomains** | Manual hosts file | Automatic |
+| **Database Sync** | Manual export/import | One command |
+| **Search-Replace** | Manual | Automatic |
+| **Team Consistency** | Variable | Identical |
+| **Version Control** | Config not shareable | Config in Git |
+| **WPEngine Integration** | None | Built-in |
+| **Build Automation** | Manual | Automatic |
+
+### vs. Manual Docker Setup
+
+| Feature | Manual Docker | Stax |
+|---------|---------------|------|
+| **Configuration** | Complex YAML files | Interactive prompts |
+| **SSL Certificates** | Manual setup | Automatic |
+| **Database Import** | Manual commands | One command |
+| **Multisite DNS** | Manual /etc/hosts | Automatic |
+| **Learning Curve** | Steep | Gentle |
+| **Maintenance** | High | Low |
+
+## Real-World Examples
+
+### Daily Development Workflow
+
+```bash
+# Monday morning
+cd ~/Sites/firecrown-multisite
+stax start                    # Start your environment (10 seconds)
+
+# Pull latest database from staging
+stax db pull --environment=staging
+
+# Work on a feature
+git checkout -b feature/new-header
+# ... make changes ...
+
+# Test your changes
+stax wp cache flush
+open https://mysite.local
+
+# End of day
+stax stop
+```
+
+### Testing with Production Data
+
+```bash
+# Create a snapshot before testing
+stax db snapshot before-testing
+
+# Pull production database
+stax db pull --environment=production
+
+# Test your migration script
+stax wp db query --file=migration.sql
+
+# Something broke? No problem!
+stax db restore before-testing
+```
+
+### Onboarding a New Team Member
+
+```bash
+# New developer's machine
+git clone https://github.com/mycompany/my-project.git
+cd my-project
+
+# One-time setup
+stax setup
+
+# Project is ready!
+stax init
+
+# That's it! They have the exact same environment
+```
+
+**More examples:** [docs/EXAMPLES.md](./docs/EXAMPLES.md)
+
+## Multisite Support
+
+Stax has first-class support for WordPress multisite in both modes:
+
+### Subdomain Multisite
+
+```yaml
+# .stax.yml
+project:
+  mode: subdomain
+
+network:
+  domain: mynetwork.local
+  sites:
+    - name: site1
+      domain: site1.mynetwork.local
+    - name: site2
+      domain: site2.mynetwork.local
+```
+
+Stax automatically:
+- Configures wildcard SSL certificates
+- Sets up DNS resolution for all subdomains
+- Runs search-replace for each subsite
+- Generates proper WordPress multisite config
+
+### Subdirectory Multisite
+
+```yaml
+# .stax.yml
+project:
+  mode: subdirectory
+
+network:
+  domain: mynetwork.local
+  sites:
+    - name: site1
+      path: /site1
+    - name: site2
+      path: /site2
+```
+
+Works seamlessly with both modes.
+
+**Learn more:** [docs/MULTISITE.md](./docs/MULTISITE.md)
+
+## Troubleshooting
+
+### Common Issues
+
+**Port conflicts**
+```bash
+# Check if ports are in use
+stax doctor
+
+# Fix: Stop conflicting services
+sudo apachectl stop
+```
+
+**Database connection errors**
+```bash
+# Restart DDEV services
+stax restart
+```
+
+**SSL certificate issues**
+```bash
+# DDEV uses mkcert - this is automatic
+# If you see SSL errors, check:
+ddev --version  # Make sure DDEV is up to date
+```
+
+**Can't access subsites**
+```bash
+# Check your configuration
+stax config list
+
+# Restart to regenerate DDEV config
+stax restart
+```
+
+**Full troubleshooting guide:** [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
+
+## Getting Help
+
+If you run into issues:
+
+1. **Check the docs** - Most questions are answered in our documentation
+2. **Run diagnostics** - `stax doctor` will identify common problems
+3. **Check logs** - `stax logs -f` shows detailed error messages
+4. **Search issues** - Check GitHub issues for similar problems
+5. **Ask for help** - Contact the development team or create an issue
+
+## Contributing
+
+Stax is an internal Firecrown Media tool, but we welcome contributions from team members!
+
+**Development setup:**
+```bash
+# Clone the repo
+git clone https://github.com/firecrown-media/stax.git
+cd stax
+
+# Install dependencies
+go mod download
+
+# Build
+make build
+
+# Run tests
+make test
+
+# Install locally
+make install
+```
+
+## FAQ
+
+**Q: Does Stax work on Windows or Linux?**
+A: Currently Stax is macOS-only. Windows and Linux support may come in the future.
+
+**Q: Can I use Stax with other hosting providers?**
+A: Stax has built-in WPEngine support, but you can use it as a local development tool with any hosting provider. Database sync would be manual.
+
+**Q: How is this different from wp-env or other tools?**
+A: Stax is specifically designed for WordPress multisite with hosting integration. It's more opinionated and automated than general-purpose tools.
+
+**Q: Do I need to download all my media files?**
+A: No! Stax uses remote media proxying - it fetches media from your CDN/production server on-demand.
+
+**Q: Can multiple team members use different configurations?**
+A: The `.stax.yml` file is meant to be shared via Git for consistency. Personal preferences go in `~/.stax/config.yml`.
+
+**More questions:** [docs/FAQ.md](./docs/FAQ.md)
+
+## Requirements
+
+- **macOS**: 12.0 (Monterey) or later
+- **Processor**: Intel or Apple Silicon
+- **RAM**: 8GB minimum, 16GB recommended
+- **Disk**: 10GB free space minimum
+- **Docker Desktop**: 4.25 or later
+- **DDEV**: 1.22 or later
+
+## Version History
+
+- **v1.0.0** (Upcoming) - Initial release
+  - WordPress multisite support
+  - WPEngine integration
+  - Database sync and snapshots
+  - Build automation
+  - Remote media proxying
+
+## License
+
+Proprietary - Firecrown Media
+
+## Support
+
+For support with Stax:
+- Documentation: [docs/](./docs/)
+- Issues: [GitHub Issues](https://github.com/firecrown-media/stax/issues)
+- Internal: Contact the development team
+
+---
+
+**Made with care by Firecrown Media**
+
+[Documentation](./docs/) • [Quick Start](./docs/QUICK_START.md) • [FAQ](./docs/FAQ.md) • [Troubleshooting](./docs/TROUBLESHOOTING.md)

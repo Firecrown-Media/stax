@@ -17,6 +17,8 @@ stax
 coverage.*
 *.coverprofile
 profile.cov
+coverage/
+*.html
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -38,6 +40,9 @@ go.work.sum
 # Build directory
 build/
 
+# GoReleaser dist directory
+dist/
+
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -55,5 +60,11 @@ stax.yaml
 *.tar.gz
 stax.rb
 
-# Agent  or LLM files
+# AI Assistant files (do not commit, except internal docs)
 .claude/
+CLAUDE.md
+*.claude.md
+
+# But keep docs/.internal/ for team development
+!docs/.internal/
+!docs/.internal/claude.md

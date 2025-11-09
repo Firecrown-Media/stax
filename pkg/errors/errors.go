@@ -2,78 +2,78 @@ package errors
 
 import (
 	"fmt"
-	"os"
 )
 
-type StaxError struct {
-	Code    int
+// Common error types for Stax
+
+// DDEVError represents an error with DDEV operations
+type DDEVError struct {
 	Message string
-	Cause   error
+	Err     error
 }
 
-func (e *StaxError) Error() string {
-	if e.Cause != nil {
-		return fmt.Sprintf("%s: %v", e.Message, e.Cause)
+func (e *DDEVError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("DDEV error: %s: %v", e.Message, e.Err)
 	}
-	return e.Message
+	return fmt.Sprintf("DDEV error: %s", e.Message)
 }
 
-func (e *StaxError) Unwrap() error {
-	return e.Cause
+// NewDDEVError creates a new DDEV error
+func NewDDEVError(message string, err error) *DDEVError {
+	return &DDEVError{Message: message, Err: err}
 }
 
-const (
-	ErrCodeGeneral        = 1
-	ErrCodeDDEVNotFound   = 2
-	ErrCodeProjectNotFound = 3
-	ErrCodeInvalidConfig  = 4
-	ErrCodePermissions    = 5
-)
+// WPEngineError represents an error with WPEngine operations
+type WPEngineError struct {
+	Message string
+	Err     error
+}
 
-func New(code int, message string) *StaxError {
-	return &StaxError{
-		Code:    code,
-		Message: message,
+func (e *WPEngineError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("WPEngine error: %s: %v", e.Message, e.Err)
 	}
+	return fmt.Sprintf("WPEngine error: %s", e.Message)
 }
 
-func Wrap(code int, message string, cause error) *StaxError {
-	return &StaxError{
-		Code:    code,
-		Message: message,
-		Cause:   cause,
+// NewWPEngineError creates a new WPEngine error
+func NewWPEngineError(message string, err error) *WPEngineError {
+	return &WPEngineError{Message: message, Err: err}
+}
+
+// ConfigError represents a configuration error
+type ConfigError struct {
+	Message string
+	Err     error
+}
+
+func (e *ConfigError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("Configuration error: %s: %v", e.Message, e.Err)
 	}
+	return fmt.Sprintf("Configuration error: %s", e.Message)
 }
 
-func DDEVNotFound() *StaxError {
-	return New(ErrCodeDDEVNotFound, "DDEV is not installed or not in PATH. Please install DDEV first: https://ddev.readthedocs.io/en/stable/#installation")
+// NewConfigError creates a new configuration error
+func NewConfigError(message string, err error) *ConfigError {
+	return &ConfigError{Message: message, Err: err}
 }
 
-func ProjectNotFound(path string) *StaxError {
-	return New(ErrCodeProjectNotFound, fmt.Sprintf("No DDEV project found in %s. Run 'stax init' first.", path))
+// CredentialsError represents a credentials error
+type CredentialsError struct {
+	Message string
+	Err     error
 }
 
-func InvalidConfig(message string) *StaxError {
-	return New(ErrCodeInvalidConfig, fmt.Sprintf("Invalid configuration: %s", message))
-}
-
-func PermissionDenied(path string) *StaxError {
-	return New(ErrCodePermissions, fmt.Sprintf("Permission denied accessing %s", path))
-}
-
-func HandleError(err error) {
-	if err == nil {
-		return
+func (e *CredentialsError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("Credentials error: %s: %v", e.Message, e.Err)
 	}
+	return fmt.Sprintf("Credentials error: %s", e.Message)
+}
 
-	if staxErr, ok := err.(*StaxError); ok {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", staxErr.Message)
-		if staxErr.Cause != nil && os.Getenv("STAX_VERBOSE") == "true" {
-			fmt.Fprintf(os.Stderr, "Cause: %v\n", staxErr.Cause)
-		}
-		os.Exit(staxErr.Code)
-	} else {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(ErrCodeGeneral)
-	}
+// NewCredentialsError creates a new credentials error
+func NewCredentialsError(message string, err error) *CredentialsError {
+	return &CredentialsError{Message: message, Err: err}
 }

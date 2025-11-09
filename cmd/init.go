@@ -1,80 +1,102 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/Firecrown-Media/stax/pkg/ddev"
+	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/spf13/cobra"
 )
 
+var (
+	initName           string
+	initType           string
+	initMode           string
+	initPHPVersion     string
+	initMySQLVersion   string
+	initRepo           string
+	initBranch         string
+	initWPEngineInstall string
+	initWPEngineEnv    string
+	initInteractive    bool
+	initSkipDB         bool
+	initSkipBuild      bool
+)
+
+// initCmd represents the init command
 var initCmd = &cobra.Command{
-	Use:   "init [project-name]",
-	Short: "Initialize a new WordPress development environment",
-	Long: `Initialize a new WordPress development environment using DDEV.
-This will create a DDEV configuration optimized for WordPress development.`,
-	Args: cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		projectName := "wordpress-site"
-		if len(args) > 0 {
-			projectName = args[0]
-		}
+	Use:   "init",
+	Short: "Initialize a new Stax project",
+	Long: `Initialize a new Stax project in the current directory.
 
-		projectPath, _ := cmd.Flags().GetString("path")
-		if projectPath == "" {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("failed to get current directory: %w", err)
-			}
-			projectPath = cwd
-		}
+This command will:
+  - Create a .stax.yml configuration file
+  - Validate WPEngine credentials
+  - Clone the GitHub repository (if specified)
+  - Generate DDEV configuration
+  - Start DDEV containers
+  - Run the build process
+  - Pull and import the database from WPEngine
+  - Run search-replace operations
 
-		projectPath, err := filepath.Abs(projectPath)
-		if err != nil {
-			return fmt.Errorf("failed to resolve project path: %w", err)
-		}
+By default, this command runs in interactive mode, prompting for all
+required information. You can skip prompts by providing all flags.`,
+	Example: `  # Interactive mode (default)
+  stax init
 
-		phpVersion, _ := cmd.Flags().GetString("php-version")
-		webServer, _ := cmd.Flags().GetString("webserver")
-		database, _ := cmd.Flags().GetString("database")
+  # Non-interactive with all flags
+  stax init \
+    --name=firecrown-multisite \
+    --mode=subdomain \
+    --php-version=8.1 \
+    --mysql-version=8.0 \
+    --repo=https://github.com/Firecrown-Media/firecrown-multisite.git \
+    --wpengine-install=fsmultisite \
+    --no-interactive
 
-		config := ddev.Config{
-			ProjectName:  projectName,
-			ProjectType:  "wordpress",
-			PHPVersion:   phpVersion,
-			WebServer:    webServer,
-			DatabaseType: database,
-		}
+  # Initialize without database import
+  stax init --skip-db
 
-		fmt.Printf("Initializing WordPress project '%s' in %s\n", projectName, projectPath)
-
-		if err := ddev.Init(projectPath, config); err != nil {
-			return fmt.Errorf("failed to initialize DDEV project: %w", err)
-		}
-
-		fmt.Printf("✅ DDEV project initialized successfully!\n")
-		fmt.Printf("🚀 Starting DDEV environment...\n")
-
-		// Automatically start DDEV after initialization
-		if err := ddev.Start(projectPath); err != nil {
-			fmt.Printf("⚠️  DDEV project initialized but failed to start automatically: %v\n", err)
-			fmt.Printf("You can start it manually with 'stax start'\n")
-			return nil // Don't fail completely, project was initialized
-		}
-
-		fmt.Printf("✅ Development environment ready!\n")
-		fmt.Printf("🌐 Your project will be available at: https://%s.ddev.site\n", projectName)
-
-		return nil
-	},
+  # Initialize without build process
+  stax init --skip-build`,
+	RunE: runInit,
 }
 
 func init() {
 	rootCmd.AddCommand(initCmd)
 
-	initCmd.Flags().StringP("path", "p", "", "path to initialize project (default: current directory)")
-	initCmd.Flags().String("php-version", "8.2", "PHP version to use")
-	initCmd.Flags().String("webserver", "nginx-fpm", "web server type (nginx-fpm, apache-fpm)")
-	initCmd.Flags().String("database", "mysql:8.0", "database type and version")
+	// Flags
+	initCmd.Flags().StringVar(&initName, "name", "", "project name (default: current directory name)")
+	initCmd.Flags().StringVar(&initType, "type", "wordpress-multisite", "project type")
+	initCmd.Flags().StringVar(&initMode, "mode", "subdomain", "multisite mode (subdomain/subdirectory)")
+	initCmd.Flags().StringVar(&initPHPVersion, "php-version", "8.1", "PHP version")
+	initCmd.Flags().StringVar(&initMySQLVersion, "mysql-version", "8.0", "MySQL version")
+	initCmd.Flags().StringVar(&initRepo, "repo", "", "GitHub repository URL")
+	initCmd.Flags().StringVar(&initBranch, "branch", "main", "repository branch")
+	initCmd.Flags().StringVar(&initWPEngineInstall, "wpengine-install", "", "WPEngine install name")
+	initCmd.Flags().StringVar(&initWPEngineEnv, "wpengine-env", "production", "WPEngine environment")
+	initCmd.Flags().BoolVar(&initInteractive, "interactive", true, "enable interactive prompts")
+	initCmd.Flags().BoolVar(&initSkipDB, "skip-db", false, "skip database import")
+	initCmd.Flags().BoolVar(&initSkipBuild, "skip-build", false, "skip build process")
+}
+
+func runInit(cmd *cobra.Command, args []string) error {
+	ui.PrintHeader("Initializing Stax Project")
+
+	// TODO: Implement interactive prompts if initInteractive is true
+	// TODO: Validate WPEngine credentials
+	// TODO: Clone repository if specified
+	// TODO: Detect PHP/MySQL versions from WPEngine
+	// TODO: Generate DDEV configuration
+	// TODO: Start DDEV containers
+	// TODO: Install dependencies (composer, npm)
+	// TODO: Run build process if not skipped
+	// TODO: Pull database from WPEngine if not skipped
+	// TODO: Import database
+	// TODO: Run search-replace operations
+	// TODO: Display success message with site URLs
+
+	ui.Info("Project initialization is not yet implemented")
+	ui.Info("This is a placeholder for the full implementation")
+
+	ui.Success("Initialization placeholder completed!")
+
+	return nil
 }

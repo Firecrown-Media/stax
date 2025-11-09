@@ -4,55 +4,142 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/firecrown-media/stax/pkg/config"
+	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-// Version is set at build time via -ldflags
-var Version = "dev"
+var (
+	cfgFile    string
+	verbose    bool
+	debug      bool
+	quiet      bool
+	noColor    bool
+	projectDir string
+	cfg        *config.Config
+)
 
+// Version information (set via ldflags during build)
+var (
+	Version   = "dev"
+	GitCommit = "none"
+	BuildDate = "unknown"
+)
+
+// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "stax",
-	Short: "Streamline WordPress development with DDEV",
-	Long: `Stax streamlines WordPress development by automating the setup of 
-local environments using DDEV while providing smooth integration with 
-cloud platforms and Git-based CI/CD workflows.
+	Short: "A CLI tool for WordPress multisite development with WPEngine integration",
+	Long: `Stax is a powerful CLI tool that streamlines WordPress multisite development
+workflows. It leverages DDEV for container orchestration and provides seamless
+integration with multiple hosting providers.
 
-Get from zero to a fully configured WordPress development environment in minutes.`,
+Features:
+  - Automated WordPress multisite setup
+  - WPEngine database sync and file management
+  - Remote media proxying (BunnyCDN + WPEngine)
+  - DDEV container management
+  - Secure credential storage via macOS Keychain
+  - Team-friendly configuration management`,
 	Version: Version,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Skip config loading for commands that don't need it
+		if cmd.Name() == "setup" || cmd.Name() == "version" || cmd.Name() == "completion" || cmd.Name() == "man" {
+			return nil
+		}
+
+		// Initialize UI based on flags
+		ui.SetVerbose(verbose)
+		ui.SetDebug(debug)
+		ui.SetQuiet(quiet)
+		ui.SetNoColor(noColor)
+
+		// Load configuration
+		var err error
+		cfg, err = config.Load(cfgFile, projectDir)
+		if err != nil {
+			// Only fail if config is required (not for init command)
+			if cmd.Name() != "init" && cmd.Name() != "doctor" {
+				return fmt.Errorf("failed to load configuration: %w", err)
+			}
+			// For init and doctor, we can proceed without config
+			ui.Debug("Configuration not found, proceeding without it")
+		}
+
+		return nil
+	},
 }
 
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() error {
 	return rootCmd.Execute()
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	
-	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
-	rootCmd.PersistentFlags().String("config", "", "config file (default is $HOME/.stax.yaml)")
-	
+	// Global flags
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is .stax.yml)")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enable verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "enable debug logging")
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "suppress non-error output")
+	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable colored output")
+	rootCmd.PersistentFlags().StringVar(&projectDir, "project-dir", "", "project directory (default is current directory)")
+
+	// Bind flags to viper
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
+	viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
+	viper.BindPFlag("no-color", rootCmd.PersistentFlags().Lookup("no-color"))
+
+	// Set version template
+	rootCmd.SetVersionTemplate(fmt.Sprintf(`{{with .Name}}{{printf "%%s " .}}{{end}}{{printf "version %%s" .Version}}
+Git Commit: %s
+Build Date: %s
+`, GitCommit, BuildDate))
+
+	// Customize usage template
+	rootCmd.SetUsageTemplate(`Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`)
 }
 
-func initConfig() {
-	if cfgFile := viper.GetString("config"); cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
+// getConfig returns the loaded configuration
+// This is a helper function for subcommands to access the config
+func getConfig() *config.Config {
+	return cfg
+}
 
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".stax")
+// getProjectDir returns the project directory
+func getProjectDir() string {
+	if projectDir != "" {
+		return projectDir
 	}
 
-	viper.SetEnvPrefix("STAX")
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err == nil {
-		if viper.GetBool("verbose") {
-			fmt.Fprintf(os.Stderr, "Using config file: %s\n", viper.ConfigFileUsed())
-		}
+	dir, err := os.Getwd()
+	if err != nil {
+		return "."
 	}
+	return dir
 }

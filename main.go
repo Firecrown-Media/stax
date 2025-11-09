@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/Firecrown-Media/stax/cmd"
+	"github.com/firecrown-media/stax/cmd"
 )
 
 func main() {

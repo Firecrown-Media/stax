@@ -1,679 +1,1159 @@
-# Troubleshooting Guide
+# Stax Troubleshooting Guide
 
-Solutions for common issues when using Stax.
+Common problems and their solutions.
+
+---
 
 ## Table of Contents
-- [Installation Issues](#installation-issues)
-- [Runtime Issues](#runtime-issues)
-- [WP Engine Issues](#wp-engine-issues)
-- [Performance Issues](#performance-issues)
-- [Docker/DDEV Issues](#dockerddev-issues)
-- [Database Issues](#database-issues)
-- [Debugging Commands](#debugging-commands)
+
 - [Getting Help](#getting-help)
+- [Installation Issues](#installation-issues)
+- [Database Problems](#database-problems)
+- [DDEV and Container Issues](#ddev-and-container-issues)
+- [Network and Connectivity](#network-and-connectivity)
+- [SSL Certificate Errors](#ssl-certificate-errors)
+- [Multisite Issues](#multisite-issues)
+- [Build and Development](#build-and-development)
+- [Performance Issues](#performance-issues)
+- [WPEngine Integration](#wpengine-integration)
+- [Common Error Messages](#common-error-messages)
+
+---
+
+## Getting Help
+
+Before diving into specific issues, here's how to diagnose problems:
+
+### Run Stax Doctor
+
+```bash
+stax doctor
+```
+
+This checks:
+- Stax installation
+- DDEV installation and version
+- Docker Desktop status
+- Credentials validity
+- Port availability
+- SSL certificates
+- Common configuration issues
+
+**Expected output when healthy**:
+```
+🩺 Running diagnostics...
+
+✓ Stax installed (v1.0.0)
+✓ DDEV installed (v1.22.7)
+✓ Docker Desktop running
+✓ WPEngine credentials valid
+✓ GitHub token valid
+✓ Ports 80, 443, 8025 available
+✓ SSL certificates valid
+
+All checks passed!
+```
+
+### Check Logs
+
+**Stax logs**:
+```bash
+# View Stax logs
+cat ~/.stax/logs/stax.log
+
+# Follow Stax logs
+tail -f ~/.stax/logs/stax.log
+```
+
+**Container logs**:
+```bash
+# All logs
+stax logs -f
+
+# Web container only
+stax logs --service=web
+
+# Database container
+stax logs --service=db
+
+# Last 500 lines
+stax logs --tail=500
+```
+
+### Check Status
+
+```bash
+stax status
+```
+
+Shows:
+- Container health
+- URLs
+- Configuration
+- Database info
+
+---
 
 ## Installation Issues
 
 ### "Command not found: stax"
 
-**Problem:** After installation, `stax` command is not recognized.
+**Problem**: Shell can't find the `stax` command.
 
-**Solutions:**
+**Causes and solutions**:
 
-1. **Check if Stax is installed:**
+**1. Stax not installed**:
 ```bash
-# Find Stax binary
-find / -name stax 2>/dev/null
-
-# Common locations
-ls -la /usr/local/bin/stax
-ls -la ~/go/bin/stax
-ls -la /opt/homebrew/bin/stax
-```
-
-2. **Add to PATH:**
-```bash
-# For Go installation
-echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
-source ~/.zshrc
-
-# For Homebrew (M1 Mac)
-echo 'export PATH=/opt/homebrew/bin:$PATH' >> ~/.zshrc
-source ~/.zshrc
-```
-
-3. **Reinstall:**
-```bash
-# Via Homebrew
-brew uninstall stax
+# Install via Homebrew
 brew install stax
 
-# Via source
-cd /path/to/stax
-make clean
+# Or build from source
+cd ~/path/to/stax
 make install
 ```
 
-### "Docker is not running"
-
-**Problem:** Stax commands fail with Docker errors.
-
-**Solutions:**
-
-1. **Start Docker Desktop:**
+**2. Stax not in PATH**:
 ```bash
-# Mac
-open /Applications/Docker.app
+# Check where stax is
+which stax
 
-# Wait for whale icon in menu bar
+# Should show: /usr/local/bin/stax
+
+# If not, add to PATH
+echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
-2. **Check Docker status:**
+**3. Installed with brew but PATH not updated**:
 ```bash
-docker version
-docker ps
-```
+# For Apple Silicon
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zshrc
 
-3. **Alternative Docker providers:**
-```bash
-# Using Colima
-colima start --cpu 4 --memory 8
+# For Intel
+echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zshrc
 
-# Using OrbStack
-open /Applications/OrbStack.app
+source ~/.zshrc
 ```
 
 ### "DDEV not found"
 
-**Problem:** DDEV is not installed or not in PATH.
+**Problem**: Stax can't find DDEV.
 
-**Solutions:**
-
+**Solution**:
 ```bash
 # Install DDEV
-brew install ddev/ddev/ddev
+brew tap ddev/ddev
+brew install ddev
 
-# Verify installation
+# Verify
 ddev version
 
-# Check PATH
+# If installed but not found, check PATH
 which ddev
 ```
 
-## Runtime Issues
+### "Docker daemon not running"
 
-### Port Conflicts
+**Problem**: Docker Desktop isn't running.
 
-**Problem:** "Port 80 is already in use" or "Port 443 is already in use"
+**Solution**:
+1. Open Docker Desktop from Applications
+2. Wait for it to start (green icon in menu bar)
+3. Try again:
+   ```bash
+   docker ps
+   ```
 
-**Solutions:**
+**If Docker won't start**:
+1. Restart your Mac
+2. Check disk space (need 10GB+ free)
+3. Reset Docker: Settings → Troubleshoot → Reset to factory defaults
+4. Reinstall Docker Desktop
 
-1. **Find conflicting process:**
+### "Permission denied" installing Stax
+
+**Problem**: Don't have permission to write to `/usr/local/bin`.
+
+**Solution**:
 ```bash
-# Mac/Linux
+# Use sudo
+sudo make install
+
+# Or install to home directory
+mkdir -p ~/bin
+cp stax ~/bin/
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### mkcert installation fails
+
+**Problem**: Can't install mkcert (needed for SSL).
+
+**Solution**:
+```bash
+# Install mkcert
+brew install mkcert
+
+# Install certificates
+mkcert -install
+
+# For Firefox support
+brew install nss
+```
+
+---
+
+## Database Problems
+
+### Database import fails
+
+**Symptom**:
+```
+Error: Failed to import database
+```
+
+**Causes and solutions**:
+
+**1. WPEngine connection failed**:
+```bash
+# Test connection
+ssh -i ~/.ssh/wpengine git@git.wpengine.com info
+
+# If fails, check:
+# - SSH key is added to WPEngine
+# - SSH key path is correct in stax setup
+stax setup
+```
+
+**2. Database too large**:
+```bash
+# Import only essential data
+stax db pull --skip-logs --skip-transients --skip-spam
+```
+
+**3. MySQL crash**:
+```bash
+# Restart database
+stax restart
+
+# Check database logs
+stax logs --service=db
+```
+
+**4. Disk space full**:
+```bash
+# Check disk space
+df -h
+
+# Clean up Docker
+docker system prune -a
+
+# Clean up old snapshots
+stax db list
+stax db delete-snapshot old-snapshot-name
+```
+
+### Search-replace doesn't work
+
+**Symptom**: URLs still show production domains after import.
+
+**Solution**:
+```bash
+# Manual search-replace
+stax wp search-replace \
+  'production.com' \
+  'local.local' \
+  --all-tables
+
+# For multisite, do each site
+stax wp search-replace \
+  'site1.com' \
+  'site1.local.local' \
+  --url=site1.com
+
+# Flush cache
+stax wp cache flush --network
+```
+
+### Can't connect to database
+
+**Symptom**:
+```
+Error establishing a database connection
+```
+
+**Solutions**:
+
+**1. Container not running**:
+```bash
+stax status
+# If stopped:
+stax start
+```
+
+**2. Database crashed**:
+```bash
+stax logs --service=db
+# Check for errors
+
+# Restart
+stax restart
+```
+
+**3. wp-config.php wrong**:
+```bash
+stax ssh
+cat wp-config.php | grep DB_HOST
+# Should be: db
+
+cat wp-config.php | grep DB_NAME
+# Should be: db
+
+exit
+```
+
+**4. Corrupted database**:
+```bash
+# Restore from snapshot
+stax db list
+stax db restore latest
+
+# Or pull fresh from WPEngine
+stax db pull
+```
+
+### Database snapshot fails
+
+**Symptom**:
+```
+Error: Failed to create snapshot
+```
+
+**Solutions**:
+
+**1. Disk space full**:
+```bash
+df -h
+
+# Clean up old snapshots
+stax db list
+stax db delete-snapshot old-snapshot
+```
+
+**2. Permissions issue**:
+```bash
+# Check snapshots directory
+ls -la ~/.stax/snapshots/
+
+# Fix permissions
+chmod -R 755 ~/.stax/snapshots/
+```
+
+**3. Database locked**:
+```bash
+# Wait for other operations to complete
+# Or restart
+stax restart
+```
+
+---
+
+## DDEV and Container Issues
+
+### Containers won't start
+
+**Symptom**:
+```
+Failed to start containers
+```
+
+**Solutions**:
+
+**1. Port conflicts**:
+```bash
+# Check what's using ports
 sudo lsof -i :80
 sudo lsof -i :443
 
-# Common culprits: Apache, nginx, MAMP, XAMPP
-```
-
-2. **Stop conflicting services:**
-```bash
-# Mac - Stop Apache
-sudo apachectl stop
-
-# Stop MAMP
-# Open MAMP and click Stop Servers
-
-# Stop other DDEV projects
+# Stop conflicting services
+sudo apachectl stop  # Apache
+# Or stop other DDEV projects
 ddev poweroff
 ```
 
-3. **Use alternative ports:**
+**2. Docker out of resources**:
 ```bash
-# Configure DDEV for different ports
-ddev config --router-http-port=8080 --router-https-port=8443
+# Increase Docker Desktop resources
+# Settings → Resources → Advanced
+# Memory: 4GB minimum, 8GB recommended
+# CPUs: 2 minimum, 4 recommended
 ```
 
-### Container Startup Failures
-
-**Problem:** "Failed to start containers"
-
-**Solutions:**
-
-1. **Check Docker resources:**
+**3. Corrupted containers**:
 ```bash
-# Check if Docker is running
-docker ps
-
-# Check available resources
-docker system df
-docker stats --no-stream
+# Remove and recreate
+stax stop
+ddev delete -Oy
+stax start
 ```
 
-2. **Clean up Docker:**
+**4. DDEV version too old**:
 ```bash
-# Remove unused containers and images
-docker system prune -a
+# Update DDEV
+brew update
+brew upgrade ddev
 
-# Remove all DDEV projects
-ddev poweroff
-ddev delete --all --omit-snapshot
+ddev version
+# Should be 1.22+
 ```
 
-3. **Restart Docker:**
-```bash
-# Mac
-killall Docker && open /Applications/Docker.app
+### Containers start but site won't load
 
-# Linux
-sudo systemctl restart docker
-```
+**Symptom**: Containers running but site shows "502 Bad Gateway" or doesn't load.
 
-### Project Won't Start
+**Solutions**:
 
-**Problem:** `stax start` fails or hangs.
-
-**Solutions:**
-
-1. **Check project status:**
+**1. Check container health**:
 ```bash
 stax status
-ddev describe
+# All containers should show (healthy)
+
+# If unhealthy, check logs
+stax logs --service=web
 ```
 
-2. **Reset project:**
+**2. nginx configuration error**:
 ```bash
-stax stop project-name
-stax delete project-name --yes
-stax init project-name
+stax ssh
+nginx -t
+# Should show: syntax is ok
+
+# If errors, check config
+cat /etc/nginx/sites-enabled/wordpress.conf
+exit
 ```
 
-3. **Check logs:**
+**3. PHP crashed**:
 ```bash
-ddev logs
-ddev logs -s db
-ddev logs -s web
+stax logs --service=web | grep php
+# Look for errors
+
+# Restart
+stax restart
 ```
 
-## WP Engine Issues
-
-### SSH Connection Failed
-
-**Problem:** "Permission denied (publickey)" or connection timeout.
-
-**Solutions:**
-
-1. **Check SSH key:**
+**4. File permissions**:
 ```bash
-# List loaded keys
-ssh-add -l
+stax ssh
+ls -la
+# web user should own files
 
-# Add key if missing
-ssh-add ~/.ssh/wpengine_rsa
-
-# Check key permissions
-ls -la ~/.ssh/wpengine_rsa
-# Should be 600
-chmod 600 ~/.ssh/wpengine_rsa
+# Fix if needed (rarely needed)
+sudo chown -R www-data:www-data .
+exit
 ```
 
-2. **Test direct SSH:**
-```bash
-# Verbose connection test
-ssh -vvv install@install.ssh.wpengine.net
+### Container keeps restarting
 
-# Check with specific key
-ssh -i ~/.ssh/wpengine_rsa install@install.ssh.wpengine.net
+**Symptom**: Container starts then stops repeatedly.
+
+**Solution**:
+```bash
+# Check logs for errors
+stax logs --service=web
+stax logs --service=db
+
+# Common causes:
+# - PHP syntax error in wp-config.php
+# - Database corruption
+# - Out of memory
+
+# Reset environment
+stax stop
+ddev delete -Oy
+stax init
 ```
 
-3. **Verify WP Engine setup:**
-- Log into my.wpengine.com
-- Check SSH keys are added
-- Verify install name is correct
-- Check account has SSH access enabled
+---
 
-### Sync Failures
+## Network and Connectivity
 
-**Problem:** `stax wpe sync` fails during database or file transfer.
+### Can't access site (ERR_NAME_NOT_RESOLVED)
 
-**Solutions:**
+**Symptom**: Browser can't resolve domain.
 
-1. **Check credentials:**
+**Solutions**:
+
+**1. Router container not running**:
 ```bash
-# Verify environment variables
-echo $WPE_USERNAME
-echo $WPE_PASSWORD
+docker ps | grep ddev-router
+# Should show running router
 
-# Test API access
-stax wpe list
+# If not:
+ddev poweroff
+stax start
 ```
 
-2. **Manual sync process:**
+**2. Wrong domain**:
 ```bash
-# SSH into WP Engine
-ssh install@install.ssh.wpengine.net
+# Check configured domain
+stax config get network.domain
 
-# Export database manually
-cd sites/install
-wp db export backup.sql
+# Should match what you're accessing
+# e.g., my-project.local
+
+# Update browser URL to match
+```
+
+**3. DNS cache**:
+```bash
+# Flush DNS cache (macOS)
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+
+# Restart browser
+```
+
+### Subdomain not accessible
+
+**Symptom**: Main site works, but `site1.my-project.local` doesn't.
+
+**Solutions**:
+
+**1. Missing from DDEV config**:
+```bash
+# Check DDEV config
+cat .ddev/config.yaml | grep additional_fqdns
+
+# Should include:
+# - "*.my-project.local"
+# - site1.my-project.local
+
+# If missing, regenerate
+stax restart
+```
+
+**2. Site doesn't exist in WordPress**:
+```bash
+stax wp site list
+# Should show the site
+
+# If missing, create it
+stax wp site create --slug=site1
+```
+
+**3. Wrong URL in database**:
+```bash
+stax wp option get siteurl --url=site1.my-project.local
+# Should be: https://site1.my-project.local
+
+# If wrong, fix it
+stax wp search-replace \
+  'wrong-domain.com' \
+  'site1.my-project.local' \
+  --url=site1.my-project.local
+```
+
+### Slow site performance
+
+**Symptom**: Site loads very slowly locally.
+
+**Solutions**:
+
+**1. Enable Mutagen** (better file sync):
+```bash
+# Stop project
+stax stop
+
+# Enable mutagen in DDEV
+echo "mutagen_enabled: true" >> .ddev/config.yaml
+
+# Restart
+stax start
+```
+
+**2. Increase Docker resources**:
+- Docker Desktop → Settings → Resources
+- Memory: 8GB
+- CPUs: 4
+- Swap: 2GB
+
+**3. Disable Xdebug** (if enabled):
+```bash
+stax ssh
+ddev xdebug off
+exit
+```
+
+**4. Skip remote media** (if proxying is slow):
+- Download uploads folder instead of proxying
+- Or use local dummy images
+
+**5. Optimize database**:
+```bash
+# Skip unnecessary tables
+stax db pull --skip-logs --skip-transients
+```
+
+---
+
+## SSL Certificate Errors
+
+### Browser shows "Not secure"
+
+**Symptom**: Browser warns about certificate.
+
+**Solutions**:
+
+**1. Accept the certificate** (easiest):
+- Chrome: Click "Advanced" → "Proceed to site (unsafe)"
+- Firefox: Click "Advanced" → "Accept Risk"
+- Safari: Click "Show Details" → "visit this website"
+
+**2. Trust mkcert CA**:
+```bash
+# Reinstall certificates
+mkcert -install
+
+# Restart browser
+```
+
+**3. Regenerate certificates**:
+```bash
+stax restart
+```
+
+**4. For Firefox** (needs extra setup):
+```bash
+brew install nss
+mkcert -install
+```
+
+### Certificate expired
+
+**Symptom**:
+```
+NET::ERR_CERT_DATE_INVALID
+```
+
+**Solution**:
+```bash
+# Regenerate certificates
+ddev delete -Oy
+stax start
+
+# Or manually
+stax ssh
+rm -rf /etc/ssl/certs/master.*
+exit
+stax restart
+```
+
+### Mixed content warnings
+
+**Symptom**: Page loads but some assets load over HTTP instead of HTTPS.
+
+**Solution**:
+```bash
+# Update URLs in database
+stax wp search-replace 'http://' 'https://' --dry-run
+# Check output, then run for real:
+stax wp search-replace 'http://' 'https://'
+
+# Clear cache
+stax wp cache flush
+```
+
+---
+
+## Multisite Issues
+
+See [MULTISITE.md](./MULTISITE.md) for detailed multisite troubleshooting.
+
+**Quick fixes**:
+
+### Can't access network admin
+
+```bash
+# Make yourself super admin
+stax wp super-admin add your-username
+```
+
+### Site shows wrong content
+
+```bash
+# Fix site URL
+stax wp option update siteurl 'https://correct-domain.local' \
+  --url=current-domain.com
+
+# Run search-replace
+stax wp search-replace \
+  'wrong-domain.com' \
+  'correct-domain.local' \
+  --url=wrong-domain.com
+```
+
+### New site not working
+
+```bash
+# Verify site exists
+stax wp site list
+
+# Check site URL
+stax wp option get siteurl --url=site.domain.local
+
+# Add to .stax.yml
+# ... add site configuration ...
+
+# Restart
+stax restart
+```
+
+---
+
+## Build and Development
+
+### Build fails
+
+**Symptom**:
+```
+Build failed with errors
+```
+
+**Solutions**:
+
+**1. Dependencies not installed**:
+```bash
+stax ssh
+composer install
+npm install
 exit
 
-# Download database
-scp install@install.ssh.wpengine.net:sites/install/backup.sql ./
-
-# Import locally
-ddev import-db --src=backup.sql
+stax build
 ```
 
-3. **Check WP Engine status:**
+**2. Build script error**:
 ```bash
-# Check if WP Engine is having issues
-curl https://wpengine.com/support/status/
+# Check build logs
+stax logs -f
+
+# Run build manually to see errors
+stax ssh
+bash scripts/build.sh
+# Look for errors
+exit
 ```
 
-### Warp Terminal Issues
-
-**Problem:** SSH hangs when using Warp terminal.
-
-**Solution:** Use alternative terminal:
+**3. Node/PHP version mismatch**:
 ```bash
-# Mac
-open -a Terminal
-# or
-open -a iTerm
+# Check versions
+stax ssh
+node --version
+php --version
+exit
 
-# Then run Stax commands
-stax wpe sync install
+# Update in .stax.yml if needed
+stax config set ddev.php_version 8.2
+stax config set ddev.nodejs_version 20
+stax restart
 ```
+
+### Linter failures
+
+**Symptom**:
+```
+Linting failed: X errors
+```
+
+**Solution**:
+```bash
+# Auto-fix (when possible)
+stax lint --fix
+
+# Or fix manually
+# Read error output
+stax lint
+
+# Fix each error in your editor
+# Run again
+stax lint
+```
+
+### Watch mode not detecting changes
+
+**Symptom**: Files change but build doesn't trigger.
+
+**Solutions**:
+
+**1. Restart watch**:
+```bash
+# Stop (Ctrl+C)
+# Start again
+stax dev
+```
+
+**2. Check watch paths**:
+```bash
+# Edit .stax.yml
+build:
+  watch:
+    paths:
+      - wp-content/themes/*/assets/**
+      - wp-content/mu-plugins/*/assets/**
+```
+
+**3. File system events** (macOS):
+```bash
+# Install fswatch
+brew install fswatch
+
+# Or use mutagen
+echo "mutagen_enabled: true" >> .ddev/config.yaml
+stax restart
+```
+
+---
 
 ## Performance Issues
 
-### Slow Sync Operations
+### High CPU usage
 
-**Problem:** WP Engine sync takes too long.
+**Causes**:
+- Docker Desktop
+- File sync (especially without Mutagen)
+- Build processes running
 
-**Solutions:**
+**Solutions**:
 
-1. **Skip unnecessary files:**
+**1. Enable Mutagen**:
 ```bash
-# Database only (fastest)
-stax wpe sync install --skip-files
-
-# Skip media files
-stax wpe sync install --skip-media
+echo "mutagen_enabled: true" >> .ddev/config.yaml
+stax restart
 ```
 
-2. **Use staging environment:**
+**2. Stop watch mode** when not needed:
 ```bash
-# Staging databases are often smaller
-stax wpe sync install --environment=staging
+# If stax dev is running
+# Press Ctrl+C
 ```
 
-3. **Check network speed:**
+**3. Stop unused projects**:
 ```bash
-# Test connection speed
-ssh install@install.ssh.wpengine.net "dd if=/dev/zero bs=1M count=10" | dd of=/dev/null
-```
-
-### High Memory Usage
-
-**Problem:** Docker using too much memory.
-
-**Solutions:**
-
-1. **Check resource usage:**
-```bash
-docker stats --no-stream
-docker system df
-```
-
-2. **Limit DDEV resources:**
-```bash
-# Stop unused projects
-stax poweroff
-
-# Configure memory limits
-ddev config --web-working-dir=/var/www/html --php-memory-limit=256M
-```
-
-3. **Clean up Docker:**
-```bash
-# Remove unused data
-docker system prune -a --volumes
-```
-
-### Slow Site Performance
-
-**Problem:** Local site runs slowly.
-
-**Solutions:**
-
-1. **Check container resources:**
-```bash
-ddev describe
-docker stats
-```
-
-2. **Optimize database:**
-```bash
-stax wp db optimize
-stax wp transient delete --all
-```
-
-3. **Disable unnecessary plugins:**
-```bash
-stax wp plugin deactivate --all
-stax wp plugin activate essential-plugin-only
-```
-
-## Docker/DDEV Issues
-
-### "Cannot connect to Docker daemon"
-
-**Solutions:**
-
-1. **Check Docker service:**
-```bash
-# Mac
-docker version
-# If failed, start Docker Desktop
-
-# Linux
-sudo systemctl status docker
-sudo systemctl start docker
-```
-
-2. **Check user permissions (Linux):**
-```bash
-# Add user to docker group
-sudo usermod -aG docker $USER
-# Log out and back in
-```
-
-### DDEV Router Issues
-
-**Problem:** "Router is not running" or "ddev-router container is not running"
-
-**Solutions:**
-
-```bash
-# Restart router
 ddev poweroff
-ddev start
-
-# Reset router ports
-ddev config global --router-http-port=80 --router-https-port=443
 ```
 
-### Container Disk Space
+**4. Limit Docker resources**:
+- Docker Desktop → Settings → Resources
+- Don't give Docker ALL your CPU/RAM
+- Leave some for macOS
 
-**Problem:** "No space left on device"
+### High RAM usage
 
-**Solutions:**
+**Solutions**:
 
+**1. Stop containers** when not using:
 ```bash
-# Check disk usage
+stax stop
+```
+
+**2. Reduce Docker memory allocation**:
+- Docker Desktop → Settings → Resources
+- Memory: 4-6GB (instead of 8GB)
+
+**3. Clean up**:
+```bash
+# Remove old containers
+docker system prune -a
+
+# Remove old snapshots
+stax db list
+stax db delete-snapshot old-snapshot
+```
+
+### Disk space running out
+
+**Solutions**:
+
+**1. Clean up Docker**:
+```bash
+docker system prune -a --volumes
+```
+
+**2. Clean up snapshots**:
+```bash
+stax db list
+stax db delete-snapshot old-snapshot-name
+```
+
+**3. Clean up DDEV snapshots**:
+```bash
+ddev snapshot --cleanup
+```
+
+**4. Check disk usage**:
+```bash
+# Overall
 df -h
+
+# Docker
 docker system df
 
-# Clean everything
+# Stax snapshots
+du -sh ~/.stax/snapshots/*
+```
+
+---
+
+## WPEngine Integration
+
+### WPEngine authentication fails
+
+**Symptom**:
+```
+Error: WPEngine authentication failed
+```
+
+**Solutions**:
+
+**1. Reconfigure credentials**:
+```bash
+stax setup
+# Enter correct credentials
+```
+
+**2. Test manually**:
+```bash
+# Test SSH
+ssh -i ~/.ssh/wpengine git@git.wpengine.com info
+
+# Should list your installs
+```
+
+**3. Check SSH key**:
+```bash
+# Verify key exists
+ls -la ~/.ssh/wpengine*
+
+# Verify public key is in WPEngine
+# WPEngine portal → SSH Keys
+# Should see your key
+```
+
+**4. Generate new key**:
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/wpengine
+
+# Add public key to WPEngine
+cat ~/.ssh/wpengine.pub
+# Copy and paste in WPEngine portal
+
+# Update Stax
+stax setup
+```
+
+### Can't pull database from WPEngine
+
+**Symptom**:
+```
+Error: Failed to pull database from WPEngine
+```
+
+**Solutions**:
+
+**1. Check environment exists**:
+```bash
+# List environments
+stax wp env list
+
+# Try specific environment
+stax db pull --environment=production
+stax db pull --environment=staging
+```
+
+**2. Network issues**:
+```bash
+# Test connection
+ping ssh.wpengineapi.net
+
+# Try again
+stax db pull
+```
+
+**3. Database too large**:
+```bash
+# Skip non-essential data
+stax db pull \
+  --skip-logs \
+  --skip-transients \
+  --skip-spam \
+  --exclude-tables=wp_actionscheduler_logs
+```
+
+### WPEngine file sync fails
+
+**Symptom**:
+```
+Error: File sync failed
+```
+
+**Solutions**:
+
+**1. Check SSH connection**:
+```bash
+ssh -i ~/.ssh/wpengine git@git.wpengine.com info
+```
+
+**2. Try manual sync**:
+```bash
+# Sync specific directory
+stax ssh
+rsync -avz -e "ssh -i ~/.ssh/wpengine" \
+  git@git.wpengine.com:/sites/myinstall/wp-content/uploads/ \
+  wp-content/uploads/
+exit
+```
+
+**3. Sync smaller directory**:
+```bash
+# Instead of all uploads:
+stax wpe sync wp-content/uploads/2024/
+```
+
+---
+
+## Common Error Messages
+
+### "Port 80 is already in use"
+
+**Solution**:
+```bash
+# Find what's using it
+sudo lsof -i :80
+
+# Usually Apache
+sudo apachectl stop
+
+# Or another DDEV project
+ddev poweroff
+
+# Restart
+stax start
+```
+
+### "No space left on device"
+
+**Solution**:
+```bash
+# Clean up Docker
 docker system prune -a --volumes
-ddev delete --all --omit-snapshot
 
-# Check Docker Desktop settings
-# Increase disk image size in preferences
-```
+# Clean up snapshots
+stax db list
+stax db delete-snapshot old-snapshot
 
-## Database Issues
-
-### Import Failures
-
-**Problem:** Database import fails or hangs.
-
-**Solutions:**
-
-1. **Check file size and format:**
-```bash
-# Check file
-ls -lh database.sql
-file database.sql
-head -n 20 database.sql
-```
-
-2. **Import with progress:**
-```bash
-# Install pv for progress
-brew install pv  # Mac
-sudo apt install pv  # Linux
-
-# Import with progress bar
-pv database.sql | ddev mysql
-```
-
-3. **Split large files:**
-```bash
-# Split into smaller chunks
-split -l 50000 database.sql chunk_
-
-# Import chunks
-for file in chunk_*; do
-    ddev mysql < $file
-done
-```
-
-### URL Rewrite Issues
-
-**Problem:** Site redirects to production URL.
-
-**Solutions:**
-
-```bash
-# Search and replace URLs
-stax wp search-replace "production.com" "local.ddev.site" --all-tables
-
-# Check site URL settings
-stax wp option get siteurl
-stax wp option get home
-
-# Update if needed
-stax wp option update siteurl "https://local.ddev.site"
-stax wp option update home "https://local.ddev.site"
-```
-
-### Character Encoding Issues
-
-**Problem:** Special characters appear broken.
-
-**Solutions:**
-
-```bash
-# Check database charset
-stax wp db query "SHOW VARIABLES LIKE 'character_set_%';"
-
-# Convert database
-stax wp db export backup.sql
-iconv -f ISO-8859-1 -t UTF-8 backup.sql > converted.sql
-stax wp db reset --yes
-stax wp db import converted.sql
-```
-
-## Debugging Commands
-
-### General Debugging
-
-```bash
-# Verbose output
-stax --verbose [command]
-
-# Check versions
-stax --version
-ddev version
-docker version
-
-# System information
-uname -a
+# Check disk space
 df -h
-free -h  # Linux
-vm_stat  # Mac
 ```
 
-### DDEV Debugging
+### "Error establishing a database connection"
 
+**Solution**:
 ```bash
-# Project information
-ddev describe
-ddev list
+# Restart database
+stax restart
 
-# Logs
-ddev logs
-ddev logs -f  # Follow
-ddev logs -s web  # Web container only
-ddev logs -s db  # Database only
+# Check database is running
+stax status
 
-# SSH into containers
-ddev ssh  # Web container
-ddev ssh -s db  # Database container
-
-# Execute commands in container
-ddev exec pwd
-ddev exec php -v
+# Check wp-config.php
+stax ssh
+cat wp-config.php | grep DB_
+# Should show:
+# DB_HOST = 'db'
+# DB_NAME = 'db'
+exit
 ```
 
-### WordPress Debugging
+### "413 Request Entity Too Large"
 
+**Cause**: Trying to upload large file.
+
+**Solution**:
 ```bash
-# Enable debug mode
-stax wp config set WP_DEBUG true --raw
-stax wp config set WP_DEBUG_LOG true --raw
-stax wp config set WP_DEBUG_DISPLAY false --raw
+# Increase upload limit
+stax ssh
+echo "upload_max_filesize = 100M" >> /etc/php/php.ini
+echo "post_max_size = 100M" >> /etc/php/php.ini
+exit
 
-# Check debug log
-stax wp eval 'echo WP_CONTENT_DIR . "/debug.log";'
-tail -f wp-content/debug.log
-
-# Database check
-stax wp db check
-stax wp db repair
+stax restart
 ```
 
-### Network Debugging
+### "Maximum execution time exceeded"
 
+**Solution**:
 ```bash
-# Check ports
-netstat -an | grep -E ":(80|443|3306)"
-lsof -i :80
-lsof -i :443
+# Increase max execution time
+stax ssh
+echo "max_execution_time = 300" >> /etc/php/php.ini
+exit
 
-# DNS resolution
-nslookup local.ddev.site
-ping local.ddev.site
-
-# Check hosts file
-cat /etc/hosts | grep ddev
+stax restart
 ```
 
-## Getting Help
+### "Memory limit exhausted"
 
-### Self-Help Resources
-
-1. **Built-in help:**
+**Solution**:
 ```bash
-stax --help
-stax [command] --help
-ddev help
+# Increase PHP memory limit
+stax ssh
+echo "memory_limit = 512M" >> /etc/php/php.ini
+exit
+
+stax restart
 ```
 
-2. **Check logs:**
-```bash
-# Stax logs (if verbose enabled)
-stax --verbose [command] 2>&1 | tee stax.log
+---
 
-# DDEV logs
-ddev logs > ddev.log
+## Still Need Help?
 
-# Docker logs
-docker logs [container-id]
-```
+If your issue isn't covered here:
 
-3. **Version information for bug reports:**
-```bash
-# Collect system info
-stax --version > debug-info.txt
-ddev version >> debug-info.txt
-docker version >> debug-info.txt
-uname -a >> debug-info.txt
-```
+1. **Check docs**:
+   - [User Guide](./USER_GUIDE.md)
+   - [Multisite Guide](./MULTISITE.md)
+   - [WPEngine Guide](./WPENGINE.md)
+   - [FAQ](./FAQ.md)
 
-### Reporting Issues
+2. **Run diagnostics**:
+   ```bash
+   stax doctor
+   ```
 
-When reporting issues, include:
+3. **Check logs**:
+   ```bash
+   stax logs -f
+   cat ~/.stax/logs/stax.log
+   ```
 
-1. **Environment details:**
-   - Operating system and version
+4. **Search GitHub issues**:
+   - [github.com/firecrown-media/stax/issues](https://github.com/firecrown-media/stax/issues)
+
+5. **Create a new issue**:
+   Include:
    - Stax version (`stax --version`)
    - DDEV version (`ddev version`)
-   - Docker version (`docker version`)
+   - macOS version
+   - What you were trying to do
+   - Full error message
+   - Output of `stax doctor`
+   - Relevant logs
 
-2. **Steps to reproduce:**
-   - Exact commands run
-   - Expected behavior
-   - Actual behavior
+6. **Contact the team**:
+   - Internal: Slack #dev-tools channel
+   - Email: dev@firecrown.com
 
-3. **Error messages:**
-   - Full error output
-   - Relevant log files
-   - Screenshots if applicable
+---
 
-4. **What you've tried:**
-   - Troubleshooting steps taken
-   - Workarounds attempted
-
-### Support Channels
-
-- **GitHub Issues:** [github.com/Firecrown-Media/stax/issues](https://github.com/Firecrown-Media/stax/issues)
-- **Email:** dev@firecrown.com
-- **Documentation:** Check all guides in `/docs` directory
-
-### Emergency Recovery
-
-If everything is broken:
-
-```bash
-# Nuclear option - reset everything
-ddev poweroff
-docker system prune -a --volumes
-brew uninstall stax ddev
-brew install ddev/ddev/ddev stax
-
-# Start fresh
-stax init test-project
-stax setup test-project --install-wp
-stax start test-project
-```
-
-## Prevention Tips
-
-1. **Regular maintenance:**
-```bash
-# Weekly cleanup
-docker system prune
-ddev cleanup
-```
-
-2. **Monitor resources:**
-```bash
-# Check before starting new projects
-docker system df
-df -h
-```
-
-3. **Keep software updated:**
-```bash
-brew upgrade stax ddev docker
-```
-
-4. **Backup before major changes:**
-```bash
-stax wp db export backup-$(date +%Y%m%d).sql
-```
+**Most issues can be solved by**: Restarting (`stax restart`) or running diagnostics (`stax doctor`).

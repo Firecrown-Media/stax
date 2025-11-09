@@ -1,486 +1,707 @@
-# WP Engine Integration Guide
+# WPEngine Integration Guide
 
-Complete guide for integrating Stax with WP Engine hosting environments.
+Complete guide to using Stax with WPEngine hosting.
+
+---
 
 ## Table of Contents
-- [Prerequisites](#prerequisites)
-- [Initial Setup](#initial-setup)
-- [Understanding stax wpe sync](#understanding-stax-wpe-sync)
-- [Common Workflows](#common-workflows)
-- [Command Reference](#command-reference)
-- [Performance Optimization](#performance-optimization)
+
+- [Overview](#overview)
+- [Getting Started](#getting-started)
+- [Database Operations](#database-operations)
+- [File Synchronization](#file-synchronization)
+- [WPEngine Environments](#wpengine-environments)
+- [Remote Media](#remote-media)
+- [Best Practices](#best-practices)
 - [Troubleshooting](#troubleshooting)
 
-## Prerequisites
+---
 
-Before using WP Engine features, you need:
+## Overview
 
-### 1. WP Engine Account Access
-- Contact your team administrator for account access
-- Ensure you have permissions for target installations
-- Verify you can log into [my.wpengine.com](https://my.wpengine.com)
+Stax provides seamless integration with WPEngine, allowing you to:
+- Pull databases from production or staging
+- Sync files from remote environments
+- Access multiple WPEngine environments
+- Proxy media files without local downloads
+- Work with WPEngine multisite installations
 
-### 2. SSH Key Configuration
+### What is WPEngine?
 
-Generate and add SSH keys for secure connection:
+WPEngine is a managed WordPress hosting platform. It handles:
+- Server management and optimization
+- Automatic backups
+- Security and updates
+- CDN and caching
+- Staging environments
+- Git-based deployments
 
+Stax connects to WPEngine to bring your production/staging data to your local environment.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+Before using WPEngine features:
+
+1. **WPEngine Account** with API access
+2. **WPEngine API Credentials**
+3. **SSH Key** added to WPEngine
+4. **Install name** (found in WPEngine portal)
+
+### Getting Your WPEngine API Credentials
+
+**Step 1: Access WPEngine Portal**
+1. Log in to [my.wpengine.com](https://my.wpengine.com)
+2. Click your account name (top right)
+3. Go to **Account** → **API Access**
+
+**Step 2: Create API User** (if needed)
+1. Click "Add User"
+2. Note the username (usually email@company.com)
+3. Set a password
+4. Save credentials securely
+
+**Step 3: Get Your Install Name**
+1. In WPEngine portal, go to **Sites**
+2. Click on your site
+3. Note the "Install Name" (e.g., `mysite` or `mycompany`)
+
+### Setting Up SSH Access
+
+**Step 1: Generate SSH Key** (if you don't have one)
 ```bash
-# Generate SSH key (if you don't have one)
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/wpengine_rsa -C "your.email@company.com"
-
-# View your public key
-cat ~/.ssh/wpengine_rsa.pub
+ssh-keygen -t ed25519 -C "your_email@example.com" -f ~/.ssh/wpengine
 ```
 
-**Add to WP Engine:**
-1. Log into [my.wpengine.com](https://my.wpengine.com)
-2. Navigate to your name (top right) → "SSH keys"
-3. Click "Add SSH key"
-4. Paste your public key
-5. Name it (e.g., "MacBook Pro - Development")
+Press Enter for no passphrase (or add one for security).
 
-### 3. SSH Config Setup
-
-Configure SSH for easier connections:
-
+**Step 2: Add Public Key to WPEngine**
 ```bash
-# Edit SSH config
-nano ~/.ssh/config
-
-# Add this configuration
-Host *.ssh.wpengine.net
-  IdentityFile ~/.ssh/wpengine_rsa
-  StrictHostKeyChecking no
-  UserKnownHostsFile /dev/null
+# Copy your public key
+cat ~/.ssh/wpengine.pub
 ```
 
-### 4. Test Connection
+In WPEngine portal:
+1. Go to **Account** → **SSH Keys**
+2. Click "Add SSH Key"
+3. Paste your public key
+4. Give it a name (e.g., "My Development Machine")
+5. Click "Add"
 
-Verify SSH access works:
-
+**Step 3: Test SSH Connection**
 ```bash
-# Test connection (replace 'installname' with actual install)
-ssh installname@installname.ssh.wpengine.net "echo 'Connected successfully!'"
+ssh -i ~/.ssh/wpengine git@git.wpengine.com info
 ```
 
-### 5. API Credentials (Optional)
+You should see a list of your WPEngine installs.
 
-For API access, set environment variables:
-
-```bash
-# Add to ~/.zshrc or ~/.bashrc
-export WPE_USERNAME="your-username"
-export WPE_PASSWORD="your-password"
-
-# Reload shell
-source ~/.zshrc
-```
-
-## Initial Setup
-
-### Finding Install Names
-
-WP Engine install names are the internal identifiers for sites:
+### Configuring Stax
 
 ```bash
-# List all available installs
-stax wpe list
-
-# Get details about specific install
-stax wpe info installname
+stax setup
 ```
 
-Common install naming patterns:
-- Production: `clientprod` or `clientname`
-- Staging: `clientstg` or `clientstage`
-- Development: `clientdev`
+Enter your:
+- **WPEngine API Username**: your_email@company.com
+- **WPEngine API Password**: your_api_password
+- **SSH Key Path**: ~/.ssh/wpengine
 
-### First Sync
+Stax stores these securely in macOS Keychain.
 
-Set up your first WP Engine sync:
+**Verify setup**:
+```bash
+stax doctor
+```
+
+Should show:
+```
+✓ WPEngine credentials valid
+✓ SSH key configured for WPEngine
+```
+
+---
+
+## Database Operations
+
+### Pulling Database from WPEngine
+
+**Basic pull** (from configured environment):
+```bash
+stax db pull
+```
+
+**From specific environment**:
+```bash
+# Production
+stax db pull --environment=production
+
+# Staging
+stax db pull --environment=staging
+```
+
+**What happens**:
+1. Creates automatic snapshot (safety backup)
+2. Connects to WPEngine via SSH
+3. Detects table prefix (usually `wp_`)
+4. Exports database on WPEngine server
+5. Transfers to your machine
+6. Imports to local database
+7. Runs search-replace for all domains
+8. Flushes WordPress caches
+
+**Expected output**:
+```
+🗄️  Pulling database from WPEngine (production)
+
+✓ Creating snapshot: auto_2024-11-08_14-30-00
+✓ Connecting to WPEngine SSH Gateway
+✓ Detecting table prefix: wp_
+✓ Exporting database
+  Tables: 127
+  Size: 245 MB
+✓ Transferring database
+  [████████████████████] 245 MB
+✓ Importing to local database
+  Rows: 1,245,678
+✓ Running search-replace
+  Network: mysite.wpengine.com → my-project.local
+  site1: site1.com → site1.my-project.local
+  site2: site2.com → site2.my-project.local
+✓ Flushing WordPress cache
+
+Database pulled successfully!
+Time: 2m 34s
+```
+
+### Optimizing Database Pulls
+
+**Skip unnecessary data** (faster imports):
+```bash
+stax db pull \
+  --skip-logs \
+  --skip-transients \
+  --skip-spam
+```
+
+This excludes:
+- Log tables (action scheduler, error logs)
+- Transient data (temporary cache)
+- Spam comments and trash
+
+Can reduce import time by 50%+.
+
+**Exclude specific tables**:
+```bash
+stax db pull --exclude-tables=wp_actionscheduler_logs,wp_wc_admin_notes
+```
+
+**No automatic snapshot** (not recommended):
+```bash
+stax db pull --snapshot=false
+```
+
+### Sanitizing Production Data
+
+**For testing with anonymized data**:
+```bash
+stax db pull --sanitize
+```
+
+This:
+- Anonymizes user emails
+- Resets user passwords
+- Removes personal data
+- Keeps site structure intact
+
+Good for:
+- Testing with sensitive production data
+- Sharing databases with contractors
+- Compliance with data protection laws
+
+### Database Pull Frequency
+
+**Recommended schedule**:
+- **Daily**: If you need fresh content/users
+- **Weekly**: For most development work
+- **As needed**: When testing with specific production data
+- **Never**: For purely local development
+
+**Why not pull constantly?**
+- Takes 2-5 minutes per pull
+- Loses local database changes
+- Creates large snapshots
+- Uses bandwidth
+
+---
+
+## File Synchronization
+
+### Syncing Files from WPEngine
+
+Stax can sync files (like uploads) from WPEngine.
+
+**Sync uploads directory**:
+```bash
+stax provider sync uploads
+```
+
+**Sync specific subdirectory**:
+```bash
+stax provider sync uploads/2024
+```
+
+**Sync with dry-run** (see what would sync):
+```bash
+stax provider sync uploads --dry-run
+```
+
+**What happens**:
+1. Connects to WPEngine via SSH
+2. Uses rsync to transfer files
+3. Only syncs changed/new files
+4. Preserves file permissions
+
+**From staging**:
+```bash
+stax provider sync uploads --environment=staging
+```
+
+### When to Sync Files
+
+**You should sync when**:
+- Testing features that rely on specific uploads
+- Debugging media-related issues
+- Need exact production file structure
+
+**You shouldn't sync when**:
+- Just need to see images (use remote media proxy)
+- Uploads are very large (use proxy instead)
+- Files rarely change
+
+**Alternative: Remote Media Proxy**
+- Stax can proxy media from WPEngine/CDN
+- No local download needed
+- See "Remote Media" section below
+
+---
+
+## WPEngine Environments
+
+### Available Environments
+
+WPEngine provides multiple environments:
+
+1. **Production**
+   - Live site
+   - Real users and data
+   - Default for `stax db pull`
+
+2. **Staging**
+   - Testing environment
+   - Copy of production
+   - Safe for testing
+
+3. **Development** (some plans)
+   - Development environment
+   - Isolated from production
+
+### Listing Environments
 
 ```bash
-# 1. Create local project
-stax init client-site
-
-# 2. Full sync (database + files)
-stax wpe sync clientprod
-# This will:
-# - Connect via SSH
-# - Export database from WP Engine
-# - Download database
-# - Import to local DDEV
-# - Sync WordPress files
-# - Update URLs for local development
-
-# 3. Start development
-stax start client-site
+stax provider info wpengine
 ```
 
-## Understanding stax wpe sync
+Shows:
+- Available environments
+- Install names
+- PHP/MySQL versions
+- Domains
 
-### How Sync Works
+### Switching Environments
 
-The sync process follows these steps:
-
-1. **SSH Connection** - Connects to WP Engine via SSH
-2. **Database Export** - Creates database dump on WP Engine
-3. **Database Download** - Transfers SQL file via SCP
-4. **Database Import** - Imports into local DDEV MySQL
-5. **URL Replacement** - Updates URLs from production to local
-6. **File Sync** - Uses rsync to copy WordPress files (optional)
-7. **Cleanup** - Removes temporary files
-
-### Sync Flags Explained
-
-| Flag | Purpose | When to Use |
-|------|---------|-------------|
-| `--skip-files` | Only sync database | Daily development (faster) |
-| `--skip-database` | Only sync files | Updating media/plugins |
-| `--skip-media` | Exclude wp-content/uploads | Default on, saves bandwidth |
-| `--environment` | Choose environment | Sync from staging/dev |
-| `--delete-local` | Mirror exactly | ⚠️ Dangerous - deletes local files |
-| `--create-upload-redirect` | Redirect media to production | Avoid downloading large media |
-| `--suppress-debug` | Hide PHP notices | Cleaner output |
-
-### What Gets Synced
-
-**Database sync includes:**
-- All WordPress tables
-- Users and permissions
-- Posts, pages, and custom content
-- Settings and configurations
-
-**File sync includes:**
-- WordPress core files
-- Themes (`wp-content/themes/`)
-- Plugins (`wp-content/plugins/`)
-- Must-use plugins (`wp-content/mu-plugins/`)
-- Uploads (unless `--skip-media`)
-
-**Automatically excluded:**
-- Cache directories
-- Backup files
-- `.git` directories
-- `node_modules`
-- Temporary files
-
-## Common Workflows
-
-### Daily Development Workflow
-
-Start your day with fresh data:
-
+**Temporary switch** (one command):
 ```bash
-# Morning sync - database only for speed
-stax wpe sync clientprod --skip-files
-
-# Start development
-stax start client-site
-
-# Work on features...
-
-# End of day
-stax stop client-site
+stax db pull --environment=staging
 ```
 
-### Initial Project Setup
-
-First time working on a client site:
-
+**Permanent switch** (update config):
 ```bash
-# 1. Get install information
-stax wpe list | grep client
-stax wpe info clientprod
-
-# 2. Create and sync
-stax init client-local
-stax wpe sync clientprod --environment=production
-
-# 3. Create development user
-stax start client-local
-stax wp user create yourusername you@company.com --role=administrator
-stax wp user update yourusername --user_pass=secure-password
+stax config set wpengine.environment staging
 ```
 
-### Staging Environment Sync
-
-Work with staging instead of production:
-
+Then all pulls use staging by default:
 ```bash
-# Sync from staging
-stax wpe sync clientstg --environment=staging
-
-# Or specify in the command
-stax wpe sync clientstaging --skip-files
+stax db pull  # Now pulls from staging
 ```
 
-### Media Optimization Workflow
-
-Handle large media libraries efficiently:
-
+**Switch back**:
 ```bash
-# Option 1: Skip media entirely
-stax wpe sync clientprod --skip-files
-
-# Option 2: Redirect media to production
-stax wpe sync clientprod --skip-files --create-upload-redirect
-# Creates mu-plugin that redirects missing images to production
-
-# Option 3: Selective media sync
-stax wpe sync clientprod --skip-database
-# Then manually sync specific directories
-rsync -avz clientprod@clientprod.ssh.wpengine.net:sites/clientprod/wp-content/uploads/2024/ \
-  ./wp-content/uploads/2024/
+stax config set wpengine.environment production
 ```
 
-### Database-Only Updates
+### Environment-Specific Domains
 
-Quick database refresh without files:
+Production and staging often have different domains:
 
+**Production**:
+- mysite.wpengine.com
+- customdomain.com
+
+**Staging**:
+- mysite-staging.wpengine.com
+
+**Stax handles this automatically**.
+
+In `.stax.yml`:
+```yaml
+wpengine:
+  install: mysite
+  environment: production
+
+  domains:
+    production:
+      primary: mysite.wpengine.com
+      sites:
+        - site1.com
+        - site2.com
+
+    staging:
+      primary: mysite-staging.wpengine.com
+      sites:
+        - staging-site1.com
+        - staging-site2.com
+```
+
+When you pull from staging, Stax uses staging domains for search-replace.
+
+---
+
+## Remote Media
+
+### How Remote Media Proxy Works
+
+Instead of downloading gigabytes of media files, Stax can proxy them from production.
+
+**How it works**:
+1. WordPress requests `/wp-content/uploads/2024/01/image.jpg`
+2. File doesn't exist locally
+3. nginx proxies request to WPEngine/CDN
+4. Image loads in browser
+5. Optionally cached locally
+
+**Advantages**:
+- No need to download entire uploads directory
+- Saves disk space (GBs)
+- Always shows current production media
+- Faster initial setup
+
+**Disadvantages**:
+- Requires internet connection
+- Slightly slower than local files (first load)
+- Can't test local uploads/modifications
+
+### Enabling Remote Media Proxy
+
+**In `.stax.yml`**:
+```yaml
+media:
+  proxy:
+    enabled: true
+    remote_url: https://cdn.mysite.com
+    # Or: https://mysite.wpengine.com
+    fallback_url: https://mysite.wpengine.com
+    cache_locally: true
+    cache_duration: 7d
+```
+
+**Restart to apply**:
 ```bash
-# Download latest database
-stax wpe db download clientprod --output=latest.sql
-
-# Import to existing project
-stax wpe db import latest.sql
-
-# Update URLs
-stax wpe db rewrite clientprod
+stax restart
 ```
 
-## Command Reference
+### Configuration Options
 
-### List and Information
+**`enabled`**: Turn proxy on/off
+```yaml
+enabled: true  # Proxy enabled
+enabled: false # Use local files only
+```
 
+**`remote_url`**: Primary source for media
+```yaml
+# Use CDN (fastest)
+remote_url: https://cdn.mysite.com
+
+# Or WPEngine directly
+remote_url: https://mysite.wpengine.com
+```
+
+**`fallback_url`**: If primary fails
+```yaml
+fallback_url: https://mysite.wpengine.com
+```
+
+**`cache_locally`**: Cache downloaded files
+```yaml
+cache_locally: true  # Downloaded files stay local
+cache_locally: false # Always fetch from remote
+```
+
+**`cache_duration`**: How long to cache
+```yaml
+cache_duration: 1d   # 1 day
+cache_duration: 7d   # 1 week
+cache_duration: 30d  # 1 month
+```
+
+### Per-Site Media Proxy (Multisite)
+
+Different sites can proxy from different URLs:
+
+```yaml
+network:
+  sites:
+    - name: site1
+      domain: site1.my-project.local
+      wpengine_domain: site1.com
+      media:
+        proxy:
+          enabled: true
+          remote_url: https://cdn.site1.com
+
+    - name: site2
+      domain: site2.my-project.local
+      wpengine_domain: site2.com
+      media:
+        proxy:
+          enabled: true
+          remote_url: https://cdn.site2.com
+```
+
+### Disabling Media Proxy
+
+**Temporarily** (use local only):
+```yaml
+media:
+  proxy:
+    enabled: false
+```
+
+**Or sync files locally**:
 ```bash
-# List all installs
-stax wpe list
-
-# Detailed install information
-stax wpe info [install]
-
-# Test connection
-stax wpe connect [install]
+stax provider sync uploads
 ```
 
-### Sync Commands
+Then disable proxy.
 
+---
+
+## Best Practices
+
+### Database Management
+
+**Do**:
+- Create snapshots before risky operations
+- Pull from staging for most development
+- Use `--skip-logs` for faster imports
+- Pull once a day or less
+
+**Don't**:
+- Pull too frequently (loses local changes)
+- Pull from production without good reason
+- Skip snapshots (no safety net)
+
+### Environment Usage
+
+**Use production when**:
+- Debugging production-specific issues
+- Testing with real content
+- Need exact production data
+
+**Use staging when**:
+- Regular development work
+- Testing features before production
+- Learning/experimenting
+
+### File Synchronization
+
+**Use media proxy when**:
+- Uploads are very large
+- You don't modify uploads locally
+- Internet connection is reliable
+
+**Sync files locally when**:
+- Working offline
+- Testing upload functionality
+- Need fast media loads
+- Files are small
+
+### Security
+
+**Do**:
+- Keep API credentials secure
+- Use SSH keys (not passwords)
+- Rotate credentials periodically
+- Use `--sanitize` for sensitive data
+
+**Don't**:
+- Commit credentials to Git
+- Share credentials in plain text
+- Use production API user for testing
+
+### Performance
+
+**Optimize pulls**:
 ```bash
-# Full sync (default)
-stax wpe sync [install]
-
-# Database only
-stax wpe sync [install] --skip-files
-
-# Files only
-stax wpe sync [install] --skip-database
-
-# From staging
-stax wpe sync [install] --environment=staging
-
-# With media redirect
-stax wpe sync [install] --skip-files --create-upload-redirect
+stax db pull \
+  --environment=staging \
+  --skip-logs \
+  --skip-transients \
+  --skip-spam
 ```
 
-### Database Commands
-
-```bash
-# Download database
-stax wpe db download [install] --output=backup.sql
-
-# Import database
-stax wpe db import backup.sql
-
-# Analyze media URLs
-stax wpe db analyze
-
-# Rewrite URLs for local
-stax wpe db rewrite [install]
-
-# Diagnose URL issues
-stax wpe db diagnose
+**Enable caching**:
+```yaml
+media:
+  proxy:
+    cache_locally: true
+    cache_duration: 7d
 ```
 
-### Advanced Options
-
-```bash
-# Verbose output for debugging
-stax --verbose wpe sync [install]
-
-# Custom SSH username
-stax wpe sync [install] --username=customuser
-
-# Force delete local files (careful!)
-stax wpe sync [install] --delete-local
-```
-
-## Performance Optimization
-
-### Faster Syncing
-
-**1. Skip unnecessary files:**
-```bash
-# Most development only needs database
-stax wpe sync install --skip-files
-```
-
-**2. Use media redirects:**
-```bash
-# Avoid downloading gigabytes of images
-stax wpe sync install --skip-files --create-upload-redirect
-```
-
-**3. Sync from staging:**
-```bash
-# Staging databases are often smaller
-stax wpe sync install --environment=staging
-```
-
-**4. Exclude large directories:**
-```bash
-# Configure exclusions in ~/.stax.yaml
-hosting:
-  wpengine:
-    sync_defaults:
-      exclude_dirs:
-        - "wp-content/uploads/backups/"
-        - "wp-content/cache/"
-        - "wp-content/ai1wm-backups/"
-```
-
-### Managing Large Sites
-
-For sites over 1GB:
-
-```bash
-# 1. Initial sync - database only
-stax wpe sync largesite --skip-files
-
-# 2. Selective file sync
-# Get only current year's uploads
-rsync -avz largesite@largesite.ssh.wpengine.net:sites/largesite/wp-content/uploads/2024/ \
-  ./wp-content/uploads/2024/
-
-# 3. Use CDN for remaining media
-stax wpe sync largesite --create-upload-redirect
-```
+---
 
 ## Troubleshooting
 
-### SSH Connection Issues
+### Can't Connect to WPEngine
 
-**Problem: "Permission denied (publickey)"**
-```bash
-# Check SSH key is loaded
-ssh-add -l
-
-# Add key if missing
-ssh-add ~/.ssh/wpengine_rsa
-
-# Test direct SSH
-ssh -v installname@installname.ssh.wpengine.net
+**Symptom**:
+```
+Error: WPEngine authentication failed
 ```
 
-**Problem: "Could not resolve hostname"**
-```bash
-# Verify install name
-stax wpe list
+**Solutions**:
 
-# Check DNS
-nslookup installname.ssh.wpengine.net
+1. **Verify credentials**:
+   ```bash
+   stax setup
+   # Re-enter credentials
+   ```
+
+2. **Test SSH connection**:
+   ```bash
+   ssh -i ~/.ssh/wpengine git@git.wpengine.com info
+   ```
+
+3. **Check SSH key in WPEngine portal**:
+   - Account → SSH Keys
+   - Verify your public key is listed
+
+4. **Generate new SSH key**:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/wpengine
+   cat ~/.ssh/wpengine.pub  # Add to WPEngine
+   stax setup  # Update Stax
+   ```
+
+### Database Pull Fails
+
+**Symptom**:
+```
+Error: Failed to pull database
 ```
 
-### Sync Failures
+**Solutions**:
 
-**Problem: "Database export failed"**
+1. **Check install name**:
+   ```bash
+   stax config get wpengine.install
+   # Should match WPEngine portal
+   ```
+
+2. **Test SSH access**:
+   ```bash
+   ssh -i ~/.ssh/wpengine install-name@install-name.ssh.wpengine.net
+   ```
+
+3. **Try different environment**:
+   ```bash
+   stax db pull --environment=staging
+   ```
+
+4. **Reduce database size**:
+   ```bash
+   stax db pull --skip-logs --skip-transients
+   ```
+
+### Media Proxy Not Working
+
+**Symptom**: Images show broken.
+
+**Solutions**:
+
+1. **Check configuration**:
+   ```bash
+   stax config get media.proxy.enabled
+   # Should be: true
+
+   stax config get media.proxy.remote_url
+   # Should be valid URL
+   ```
+
+2. **Test URL manually**:
+   ```bash
+   curl -I https://cdn.mysite.com/wp-content/uploads/2024/01/test.jpg
+   # Should return 200 OK
+   ```
+
+3. **Check nginx config**:
+   ```bash
+   stax ssh
+   cat /etc/nginx/sites-enabled/wordpress.conf | grep proxy_pass
+   exit
+   ```
+
+4. **Disable and use local**:
+   ```yaml
+   media:
+     proxy:
+       enabled: false
+   ```
+
+   Then sync files:
+   ```bash
+   stax provider sync uploads
+   ```
+
+### Wrong Environment
+
+**Symptom**: Pulled wrong environment's data.
+
+**Solution**:
 ```bash
-# Check WP Engine status
-curl https://wpengine.com/support/status/
+# Check current setting
+stax config get wpengine.environment
 
-# Try manual export
-ssh install@install.ssh.wpengine.net
-cd sites/install
-wp db export backup.sql
-exit
+# Restore from snapshot
+stax db list
+stax db restore before-pull
 
-# Download manually
-scp install@install.ssh.wpengine.net:sites/install/backup.sql ./
+# Pull from correct environment
+stax db pull --environment=production
 ```
 
-**Problem: "Import failed - database too large"**
-```bash
-# Check available space
-df -h
-
-# Clear Docker space
-docker system prune -a
-
-# Import with progress
-pv database.sql | ddev mysql
-```
-
-### Performance Issues
-
-**Problem: "Sync is very slow"**
-```bash
-# Check connection speed
-ssh install@install.ssh.wpengine.net "dd if=/dev/zero bs=1M count=10" | dd of=/dev/null
-
-# Use compression
-stax wpe sync install --verbose  # Check if compression is enabled
-
-# Skip large directories
-stax wpe sync install --skip-media
-```
-
-### Warp Terminal Compatibility
-
-**Known Issue:** Warp terminal has SSH issues with WP Engine.
-
-**Workaround:** Use alternative terminals:
-- Terminal.app (Mac default)
-- iTerm2
-- VS Code integrated terminal
-
-```bash
-# In alternative terminal
-stax wpe sync install
-```
-
-## Security Best Practices
-
-1. **Never commit credentials:**
-```bash
-# Use environment variables
-export WPE_USERNAME="user"
-export WPE_PASSWORD="pass"
-```
-
-2. **Protect SSH keys:**
-```bash
-chmod 600 ~/.ssh/wpengine_rsa
-chmod 644 ~/.ssh/wpengine_rsa.pub
-```
-
-3. **Use separate keys per machine:**
-```bash
-ssh-keygen -t rsa -f ~/.ssh/wpengine_laptop
-ssh-keygen -t rsa -f ~/.ssh/wpengine_desktop
-```
-
-4. **Rotate credentials regularly:**
-- Update SSH keys every 6 months
-- Change API passwords quarterly
+---
 
 ## Next Steps
 
-- Review [Troubleshooting](TROUBLESHOOTING.md) for common issues
-- Learn about [Multisite](MULTISITE.md) configurations
-- Explore [Development](DEVELOPMENT.md) for extending Stax
+- **User Guide**: [USER_GUIDE.md](./USER_GUIDE.md) - General usage
+- **Multisite**: [MULTISITE.md](./MULTISITE.md) - Multisite with WPEngine
+- **Examples**: [EXAMPLES.md](./EXAMPLES.md) - Real-world workflows
+- **Troubleshooting**: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - More solutions
 
-## Getting Help
+---
 
-- WP Engine Support: [help.wpengine.com](https://help.wpengine.com)
-- Stax Issues: [GitHub](https://github.com/Firecrown-Media/stax/issues)
-- Team Support: Contact your DevOps lead
+**Questions?** Check the [FAQ](./FAQ.md) or contact your team!
