@@ -41,12 +41,12 @@ func NewMockDDEVManager() *MockDDEVManager {
 		},
 		DescribeFunc: func() (*ddev.ProjectInfo, error) {
 			return &ddev.ProjectInfo{
-				Name:          "test-project",
-				Status:        "running",
-				PHPVersion:    "8.1",
-				MySQLVersion:  "8.0",
-				WebserverType: "nginx-fpm",
-				URLs:          []string{"https://test-project.ddev.site"},
+				Name:            "test-project",
+				Status:          "running",
+				PHPVersion:      "8.1",
+				DatabaseType:    "mysql",
+				DatabaseVersion: "8.0",
+				URLs:            []string{"https://test-project.ddev.site"},
 			}, nil
 		},
 		ExecFunc: func(command string, args ...string) (string, error) {
