@@ -106,6 +106,19 @@ CREATE TABLE wp_options (
 INSERT INTO wp_options (option_id, option_name, option_value) VALUES
 (1, 'siteurl', 'https://example.wpengine.com'),
 (2, 'home', 'https://example.wpengine.com');
+
+DROP TABLE IF EXISTS wp_blogs;
+CREATE TABLE wp_blogs (
+  blog_id bigint(20) NOT NULL AUTO_INCREMENT,
+  site_id bigint(20) NOT NULL DEFAULT '0',
+  domain varchar(200) NOT NULL DEFAULT '',
+  path varchar(100) NOT NULL DEFAULT '',
+  PRIMARY KEY (blog_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO wp_blogs (blog_id, site_id, domain, path) VALUES
+(1, 1, 'example.wpengine.com', '/'),
+(2, 1, 'site1.wpengine.com', '/');
 `
 
 	dir := filepath.Dir(path)
