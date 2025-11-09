@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/Firecrown-Media/stax/compare/v0.3.0...v0.4.0) (2025-11-09)
+
+
+### Features
+
+* complete codebase refactor with build system, tests, and release automation ([e09284f](https://github.com/Firecrown-Media/stax/commit/e09284f0f73dc00ce77eb92202b3764bd663f34c))
+
+
+### Bug Fixes
+
+* disable CGO for Darwin builds to enable cross-compilation ([d65db36](https://github.com/Firecrown-Media/stax/commit/d65db36556b401216cb7f9f1b13510daf2e6a245))
+
 ## [0.3.0](https://github.com/Firecrown-Media/stax/compare/v0.2.0...v0.3.0) (2025-11-09)
 
 
