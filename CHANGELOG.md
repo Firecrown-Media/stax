@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/Firecrown-Media/stax/compare/v0.2.0...v0.3.0) (2025-11-09)
+
+
+### Features
+
+* complete codebase refactor with build system, tests, and CI fixes ([9de3d0d](https://github.com/Firecrown-Media/stax/commit/9de3d0dd4bfb4b7862055d2a7c72d02e6004d4f2))
+
+
+### Bug Fixes
+
+* update GoReleaser action to v6 for version 2 config support ([6865c4f](https://github.com/Firecrown-Media/stax/commit/6865c4fe7d901f090daa29e7cc4cbbbe3f1a73ef))
+
 ## [0.2.0](https://github.com/Firecrown-Media/stax/compare/v0.1.1...v0.2.0) (2025-11-09)
 
 
