@@ -1,0 +1,115 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - make test
+
+builds:
+  - id: stax-darwin
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/firecrown-media/stax/cmd.Version={{.Version}}
+      - -X github.com/firecrown-media/stax/cmd.GitCommit={{.Commit}}
+      - -X github.com/firecrown-media/stax/cmd.BuildDate={{.Date}}
+    binary: stax
+    dir: .
+
+  - id: stax-linux
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/firecrown-media/stax/cmd.Version={{.Version}}
+      - -X github.com/firecrown-media/stax/cmd.GitCommit={{.Commit}}
+      - -X github.com/firecrown-media/stax/cmd.BuildDate={{.Date}}
+    binary: stax
+    dir: .
+
+archives:
+  - id: stax
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+      - docs/**/*
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+
+brews:
+  - name: stax
+    homepage: https://github.com/firecrown-media/stax
+    description: Powerful CLI tool for WordPress multisite development workflows
+    license: MIT
+
+    repository:
+      owner: Firecrown-Media
+      name: homebrew-stax
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+
+    directory: Formula
+
+    install: |
+      bin.install "stax"
+
+    test: |
+      system "#{bin}/stax", "--version"
+
+    dependencies:
+      - name: ddev
+        type: optional
+      - name: docker
+        type: optional
+
+release:
+  github:
+    owner: firecrown-media
+    name: stax
+
+  draft: false
+  prerelease: auto
+
+  name_template: "v{{.Version}}"
+
+  header: |
+    ## Stax v{{.Version}}
+
+    ### Installation
+
+    ```bash
+    brew install firecrown-media/tap/stax
+    ```
+
+    ### Changes

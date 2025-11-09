@@ -1,60 +1,113 @@
 package wpengine
 
-import "time"
+import (
+	"time"
+)
 
-type Config struct {
-	Username    string `mapstructure:"username" yaml:"username" json:"username"`
-	APIKey      string `mapstructure:"api_key" yaml:"api_key" json:"api_key,omitempty"`
-	InstallName string `mapstructure:"install_name" yaml:"install_name" json:"install_name"`
-	Environment string `mapstructure:"environment" yaml:"environment" json:"environment"` // production, staging, development
-	SSHKey      string `mapstructure:"ssh_key" yaml:"ssh_key" json:"ssh_key,omitempty"`
+// Install represents a WPEngine installation
+type Install struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	PrimaryDomain string `json:"primary_domain"`
+	PHPVersion    string `json:"php_version"`
+	Environment   string `json:"environment"`
 }
 
-type InstallInfo struct {
-	Name         string    `json:"name"`
-	Environment  string    `json:"environment"`
-	PHPVersion   string    `json:"php_version"`
-	Status       string    `json:"status"`
-	Domain       string    `json:"domain"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastBackup   time.Time `json:"last_backup"`
-	DatabaseName string    `json:"database_name"`
+// InstallDetails represents detailed information about a WPEngine installation
+type InstallDetails struct {
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	PrimaryDomain    string `json:"primary_domain"`
+	PHPVersion       string `json:"php_version"`
+	MySQLVersion     string `json:"mysql_version"`
+	WordPressVersion string `json:"wordpress_version"`
+	Environment      string `json:"environment"`
+	DiskUsage        struct {
+		Used  int64 `json:"used"`
+		Total int64 `json:"total"`
+	} `json:"disk_usage"`
+	Domains []string `json:"domains"`
 }
 
-type BackupInfo struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"` // database, files, full
-	Size        int64     `json:"size"`
-	CreatedAt   time.Time `json:"created_at"`
-	Status      string    `json:"status"`
-	DownloadURL string    `json:"download_url,omitempty"`
+// Backup represents a WPEngine backup
+type Backup struct {
+	ID        string    `json:"id"`
+	Type      string    `json:"type"`
+	CreatedAt time.Time `json:"created_at"`
+	Size      int64     `json:"size"`
+	Status    string    `json:"status"`
 }
 
+// SSHConfig represents SSH connection configuration
+type SSHConfig struct {
+	Host       string
+	Port       int
+	User       string
+	PrivateKey string
+	Install    string
+}
+
+// DatabaseOptions represents database export options
+type DatabaseOptions struct {
+	ExcludeTables  []string
+	SkipLogs       bool
+	SkipTransients bool
+	SkipSpam       bool
+	Compress       bool
+}
+
+// SyncOptions represents file synchronization options
 type SyncOptions struct {
-	SkipMedia     bool     `json:"skip_media"`
-	SkipPlugins   bool     `json:"skip_plugins"`
-	SkipThemes    bool     `json:"skip_themes"`
-	ExcludeDirs   []string `json:"exclude_dirs"`
-	IncludeDirs   []string `json:"include_dirs"`
-	PreservePaths []string `json:"preserve_paths"`
-	DeleteLocal   bool     `json:"delete_local"`   // Allow deletion of local files not on remote
-	SuppressDebug bool     `json:"suppress_debug"` // Suppress WordPress debug notices and warnings
+	Source         string
+	Destination    string
+	Include        []string
+	Exclude        []string
+	Delete         bool
+	DryRun         bool
+	BandwidthLimit int // KB/s
+	Progress       bool
 }
 
-type DatabaseSyncResult struct {
-	Success       bool   `json:"success"`
-	BackupID      string `json:"backup_id"`
-	DatabaseFile  string `json:"database_file"`
-	ImportedRows  int    `json:"imported_rows"`
-	RewrittenURLs int    `json:"rewritten_urls"`
-	Error         string `json:"error,omitempty"`
+// ExportOptions represents database export options
+type ExportOptions struct {
+	SkipLogs       bool
+	SkipTransients bool
+	SkipSpam       bool
+	ExcludeTables  []string
+	Compress       bool
 }
 
-type FilesSyncResult struct {
-	Success       bool     `json:"success"`
-	SyncedFiles   int      `json:"synced_files"`
-	SkippedFiles  int      `json:"skipped_files"`
-	TotalSize     int64    `json:"total_size"`
-	ExcludedPaths []string `json:"excluded_paths"`
-	Error         string   `json:"error,omitempty"`
+// ListInstallsResponse represents the API response for listing installs
+type ListInstallsResponse struct {
+	Results []Install `json:"results"`
+	Count   int       `json:"count"`
+	Next    string    `json:"next,omitempty"`
+	Prev    string    `json:"prev,omitempty"`
 }
+
+// ListBackupsResponse represents the API response for listing backups
+type ListBackupsResponse struct {
+	Results []Backup `json:"results"`
+	Count   int      `json:"count"`
+}
+
+// CreateBackupRequest represents the request to create a backup
+type CreateBackupRequest struct {
+	Description string `json:"description"`
+}
+
+// CreateBackupResponse represents the response from creating a backup
+type CreateBackupResponse struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
+}
+
+// ErrorResponse represents an API error response
+type ErrorResponse struct {
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+}
+
+// InstallInfo is an alias for backward compatibility
+type InstallInfo = InstallDetails

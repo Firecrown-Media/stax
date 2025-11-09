@@ -1,0 +1,144 @@
+version: 1
+
+project:
+  name: test-project
+  type: wordpress-multisite
+  mode: subdomain
+  description: Test project for unit tests
+
+wpengine:
+  install: testinstall
+  environment: production
+  account_name: testaccount
+  ssh_gateway: ssh.wpengine.net
+  backup:
+    auto_snapshot: true
+    skip_logs: true
+    skip_transients: true
+    skip_spam: true
+  domains:
+    production:
+      primary: example.wpengine.com
+      sites:
+        - site1.wpengine.com
+        - site2.wpengine.com
+    staging:
+      primary: example.wpenginedev.com
+
+network:
+  domain: test.local
+  title: Test Network
+  admin_email: admin@test.local
+  sites:
+    - name: Site 1
+      slug: site1
+      title: Test Site 1
+      domain: site1.test.local
+      wpengine_domain: site1.wpengine.com
+      active: true
+    - name: Site 2
+      slug: site2
+      title: Test Site 2
+      domain: site2.test.local
+      wpengine_domain: site2.wpengine.com
+      active: true
+
+ddev:
+  php_version: "8.1"
+  mysql_version: "8.0"
+  mysql_type: mysql
+  webserver_type: nginx-fpm
+  router_http_port: "80"
+  router_https_port: "443"
+  nfs_mount_enabled: false
+  mutagen_enabled: false
+  xdebug_enabled: false
+  nodejs_version: "20"
+  composer_version: "2"
+  additional_hostnames:
+    - site1.test.local
+    - site2.test.local
+
+repository:
+  url: https://github.com/test/test-project
+  branch: main
+  private: true
+  depth: 1
+  submodules: false
+
+build:
+  scripts:
+    main: build.sh
+    pre_build:
+      - composer install
+    post_build:
+      - npm run build
+  composer:
+    install_args: "--no-dev --optimize-autoloader"
+    timeout: 300
+    ignore_platform_reqs: false
+    optimize: true
+    no_dev: true
+  npm:
+    install_args: "--legacy-peer-deps"
+    build_command: "npm run build"
+    dev_command: "npm run dev"
+    timeout: 300
+    legacy_peer_deps: true
+  phpcs:
+    standard: WordPress
+    extensions: php
+    show_sniffs: true
+  hooks:
+    pre_commit: true
+    pre_push: false
+
+wordpress:
+  version: latest
+  locale: en_US
+  table_prefix: wp_
+  search_replace:
+    network:
+      - old: https://example.wpengine.com
+        new: https://test.local
+    sites:
+      - old: https://site1.wpengine.com
+        new: https://site1.test.local
+        url: https://site1.test.local
+      - old: https://site2.wpengine.com
+        new: https://site2.test.local
+        url: https://site2.test.local
+
+media:
+  proxy_enabled: true
+  primary_source: wpengine
+  wpengine_fallback: true
+  cache:
+    enabled: true
+    directory: .stax/media-cache
+    max_size: 1GB
+    ttl: 86400
+
+logging:
+  level: debug
+  file: ~/.stax/logs/stax.log
+  max_size: 10MB
+  max_backups: 5
+  max_age: 30
+  format: json
+  timestamp: true
+  caller: false
+
+snapshots:
+  directory: ~/.stax/snapshots
+  auto_snapshot_before_pull: true
+  auto_snapshot_before_import: true
+  retention:
+    auto: 7
+    manual: 30
+  compression: gzip
+
+performance:
+  parallel_downloads: 4
+  rsync_bandwidth_limit: 0
+  database_import_batch_size: 1000

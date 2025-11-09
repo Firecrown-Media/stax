@@ -1,115 +1,465 @@
 package config
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
+// Config represents the complete Stax configuration
+type Config struct {
+	Version int `yaml:"version"`
+
+	// Project metadata
+	Project ProjectConfig `yaml:"project"`
+
+	// WPEngine integration
+	WPEngine WPEngineConfig `yaml:"wpengine"`
+
+	// Network and sites configuration
+	Network NetworkConfig `yaml:"network"`
+
+	// DDEV configuration
+	DDEV DDEVConfig `yaml:"ddev"`
+
+	// GitHub repository configuration
+	Repository RepositoryConfig `yaml:"repository,omitempty"`
+
+	// Build process configuration
+	Build BuildConfig `yaml:"build,omitempty"`
+
+	// WordPress configuration
+	WordPress WordPressConfig `yaml:"wordpress,omitempty"`
+
+	// Remote media configuration
+	Media MediaConfig `yaml:"media,omitempty"`
+
+	// Credentials (reference only)
+	Credentials CredentialsConfig `yaml:"credentials,omitempty"`
+
+	// Logging and debugging
+	Logging LoggingConfig `yaml:"logging,omitempty"`
+
+	// Snapshots
+	Snapshots SnapshotsConfig `yaml:"snapshots,omitempty"`
+
+	// Performance tuning
+	Performance PerformanceConfig `yaml:"performance,omitempty"`
+}
+
+// ProjectConfig represents project metadata
 type ProjectConfig struct {
-	Name         string            `mapstructure:"name" yaml:"name" json:"name"`
-	Type         string            `mapstructure:"type" yaml:"type" json:"type"`
-	PHPVersion   string            `mapstructure:"php_version" yaml:"php_version" json:"php_version"`
-	WebServer    string            `mapstructure:"webserver" yaml:"webserver" json:"webserver"`
-	Database     string            `mapstructure:"database" yaml:"database" json:"database"`
-	WordPress    WordPressConfig   `mapstructure:"wordpress" yaml:"wordpress" json:"wordpress,omitempty"`
-	WPEngine     WPEngineConfig    `mapstructure:"wpengine" yaml:"wpengine" json:"wpengine,omitempty"`
-	Plugins      []string          `mapstructure:"plugins" yaml:"plugins" json:"plugins,omitempty"`
-	Environment  map[string]string `mapstructure:"environment" yaml:"environment" json:"environment,omitempty"`
+	Name        string `yaml:"name"`
+	Type        string `yaml:"type"` // wordpress, wordpress-multisite
+	Mode        string `yaml:"mode"` // subdomain, subdirectory, single
+	Description string `yaml:"description,omitempty"`
 }
 
-type WordPressConfig struct {
-	URL       string `mapstructure:"url" yaml:"url" json:"url"`
-	Title     string `mapstructure:"title" yaml:"title" json:"title"`
-	AdminUser string `mapstructure:"admin_user" yaml:"admin_user" json:"admin_user"`
-	AdminEmail string `mapstructure:"admin_email" yaml:"admin_email" json:"admin_email"`
-	Theme     string `mapstructure:"theme" yaml:"theme" json:"theme,omitempty"`
-}
-
+// WPEngineConfig represents WPEngine integration settings
 type WPEngineConfig struct {
-	InstallName    string            `mapstructure:"install_name" yaml:"install_name" json:"install_name"`
-	Environment    string            `mapstructure:"environment" yaml:"environment" json:"environment"`
-	Username       string            `mapstructure:"username" yaml:"username" json:"username,omitempty"`
-	RemoteMediaURL string            `mapstructure:"remote_media_url" yaml:"remote_media_url" json:"remote_media_url,omitempty"`
-	SyncOptions    WPEngineSyncConfig `mapstructure:"sync" yaml:"sync" json:"sync,omitempty"`
+	Install     string                `yaml:"install"`
+	Environment string                `yaml:"environment"` // production, staging, development
+	AccountName string                `yaml:"account_name,omitempty"`
+	SSHGateway  string                `yaml:"ssh_gateway,omitempty"`
+	Backup      WPEngineBackupConfig  `yaml:"backup,omitempty"`
+	Domains     WPEngineDomainsConfig `yaml:"domains,omitempty"`
 }
 
-type WPEngineSyncConfig struct {
-	SkipMedia     bool     `mapstructure:"skip_media" yaml:"skip_media" json:"skip_media"`
-	SkipPlugins   bool     `mapstructure:"skip_plugins" yaml:"skip_plugins" json:"skip_plugins"`
-	SkipThemes    bool     `mapstructure:"skip_themes" yaml:"skip_themes" json:"skip_themes"`
-	ExcludeDirs   []string `mapstructure:"exclude_dirs" yaml:"exclude_dirs" json:"exclude_dirs,omitempty"`
-	PreservePaths []string `mapstructure:"preserve_paths" yaml:"preserve_paths" json:"preserve_paths,omitempty"`
+// WPEngineBackupConfig represents backup preferences
+type WPEngineBackupConfig struct {
+	AutoSnapshot   bool     `yaml:"auto_snapshot"`
+	SkipLogs       bool     `yaml:"skip_logs"`
+	SkipTransients bool     `yaml:"skip_transients"`
+	SkipSpam       bool     `yaml:"skip_spam"`
+	ExcludeTables  []string `yaml:"exclude_tables,omitempty"`
 }
 
-const ConfigFileName = "stax"
+// WPEngineDomainsConfig represents domain mapping
+type WPEngineDomainsConfig struct {
+	Production WPEngineDomainSet `yaml:"production,omitempty"`
+	Staging    WPEngineDomainSet `yaml:"staging,omitempty"`
+}
 
-func Load(projectPath string) (*ProjectConfig, error) {
-	v := viper.New()
-	v.SetConfigName(ConfigFileName)
-	v.SetConfigType("yaml")
-	v.AddConfigPath(projectPath)
-	
-	// Set defaults
-	setDefaults(v)
-	
-	// Try to read config file
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found, return defaults
-			var config ProjectConfig
-			if err := v.Unmarshal(&config); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal default config: %w", err)
-			}
-			return &config, nil
-		}
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+// WPEngineDomainSet represents a set of domains for an environment
+type WPEngineDomainSet struct {
+	Primary string   `yaml:"primary"`
+	Sites   []string `yaml:"sites,omitempty"`
+}
+
+// NetworkConfig represents multisite network configuration
+type NetworkConfig struct {
+	Domain     string       `yaml:"domain"`
+	Title      string       `yaml:"title,omitempty"`
+	AdminEmail string       `yaml:"admin_email,omitempty"`
+	Sites      []SiteConfig `yaml:"sites,omitempty"`
+}
+
+// SiteConfig represents an individual site in the network
+type SiteConfig struct {
+	Name           string `yaml:"name"`
+	Slug           string `yaml:"slug"`
+	Title          string `yaml:"title"`
+	Domain         string `yaml:"domain"`
+	WPEngineDomain string `yaml:"wpengine_domain"`
+	Active         bool   `yaml:"active"`
+}
+
+// DDEVConfig represents DDEV configuration
+type DDEVConfig struct {
+	PHPVersion          string              `yaml:"php_version"`
+	MySQLVersion        string              `yaml:"mysql_version"`
+	MySQLType           string              `yaml:"mysql_type,omitempty"` // mysql, mariadb
+	WebserverType       string              `yaml:"webserver_type"`
+	RouterHTTPPort      string              `yaml:"router_http_port,omitempty"`
+	RouterHTTPSPort     string              `yaml:"router_https_port,omitempty"`
+	MailHogPort         string              `yaml:"mailhog_port,omitempty"`
+	NFSMountEnabled     bool                `yaml:"nfs_mount_enabled"`
+	MutagenEnabled      bool                `yaml:"mutagen_enabled"`
+	XdebugEnabled       bool                `yaml:"xdebug_enabled"`
+	NodeJSVersion       string              `yaml:"nodejs_version,omitempty"`
+	ComposerVersion     string              `yaml:"composer_version,omitempty"`
+	AdditionalHostnames []string            `yaml:"additional_hostnames,omitempty"`
+	AdditionalFQDNs     []string            `yaml:"additional_fqdns,omitempty"`
+	CustomCommands      []DDEVCustomCommand `yaml:"custom_commands,omitempty"`
+	Hooks               DDEVHooks           `yaml:"hooks,omitempty"`
+}
+
+// DDEVCustomCommand represents a custom DDEV command
+type DDEVCustomCommand struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	Enabled     bool   `yaml:"enabled"`
+}
+
+// DDEVHooks represents DDEV lifecycle hooks
+type DDEVHooks struct {
+	PreStart  []DDEVHook `yaml:"pre_start,omitempty"`
+	PostStart []DDEVHook `yaml:"post_start,omitempty"`
+	PreStop   []DDEVHook `yaml:"pre_stop,omitempty"`
+	PostStop  []DDEVHook `yaml:"post_stop,omitempty"`
+}
+
+// DDEVHook represents a single hook command
+type DDEVHook struct {
+	Exec string `yaml:"exec"`
+}
+
+// RepositoryConfig represents GitHub repository configuration
+type RepositoryConfig struct {
+	URL        string       `yaml:"url"`
+	Branch     string       `yaml:"branch"`
+	Private    bool         `yaml:"private"`
+	Depth      int          `yaml:"depth,omitempty"`
+	Submodules bool         `yaml:"submodules"`
+	Deploy     DeployConfig `yaml:"deploy,omitempty"`
+}
+
+// DeployConfig represents deployment configuration
+type DeployConfig struct {
+	Workflow string       `yaml:"workflow"`
+	OnPush   OnPushConfig `yaml:"on_push,omitempty"`
+}
+
+// OnPushConfig represents on-push deployment configuration
+type OnPushConfig struct {
+	Branches []string `yaml:"branches,omitempty"`
+}
+
+// BuildConfig represents build process configuration
+type BuildConfig struct {
+	// Scripts configuration
+	Scripts BuildScriptsConfig `yaml:"scripts,omitempty"`
+
+	// Composer configuration
+	Composer BuildComposerConfig `yaml:"composer,omitempty"`
+
+	// NPM configuration
+	NPM BuildNPMConfig `yaml:"npm,omitempty"`
+
+	// PHPCS configuration
+	PHPCS BuildPHPCSConfig `yaml:"phpcs,omitempty"`
+
+	// Git hooks configuration
+	Hooks BuildHooksConfig `yaml:"hooks,omitempty"`
+
+	// Watch mode configuration
+	Watch WatchConfig `yaml:"watch,omitempty"`
+}
+
+// BuildScriptsConfig represents build scripts configuration
+type BuildScriptsConfig struct {
+	// Main build script path
+	Main string `yaml:"main,omitempty"`
+
+	// Additional build scripts
+	Additional []string `yaml:"additional,omitempty"`
+
+	// Pre-build hooks
+	PreBuild []string `yaml:"pre_build,omitempty"`
+
+	// Post-build hooks
+	PostBuild []string `yaml:"post_build,omitempty"`
+}
+
+// BuildComposerConfig represents composer build configuration
+type BuildComposerConfig struct {
+	// Install arguments
+	InstallArgs string `yaml:"install_args,omitempty"`
+
+	// Timeout in seconds
+	Timeout int `yaml:"timeout,omitempty"`
+
+	// Skip platform requirements check
+	IgnorePlatformReqs bool `yaml:"ignore_platform_reqs,omitempty"`
+
+	// Optimize autoloader
+	Optimize bool `yaml:"optimize"`
+
+	// Skip dev dependencies
+	NoDev bool `yaml:"no_dev"`
+}
+
+// BuildNPMConfig represents NPM build configuration
+type BuildNPMConfig struct {
+	// Install arguments
+	InstallArgs string `yaml:"install_args,omitempty"`
+
+	// Build command
+	BuildCommand string `yaml:"build_command"`
+
+	// Dev command (npm start)
+	DevCommand string `yaml:"dev_command,omitempty"`
+
+	// Timeout in seconds
+	Timeout int `yaml:"timeout,omitempty"`
+
+	// Use legacy peer deps
+	LegacyPeerDeps bool `yaml:"legacy_peer_deps"`
+}
+
+// BuildPHPCSConfig represents PHPCS configuration
+type BuildPHPCSConfig struct {
+	// Config file path
+	Config string `yaml:"config,omitempty"`
+
+	// Coding standard
+	Standard string `yaml:"standard,omitempty"`
+
+	// File extensions to check
+	Extensions string `yaml:"extensions,omitempty"`
+
+	// Patterns to ignore
+	Ignore string `yaml:"ignore,omitempty"`
+
+	// Show sniff codes
+	ShowSniffs bool `yaml:"show_sniffs,omitempty"`
+}
+
+// BuildHooksConfig represents git hooks configuration
+type BuildHooksConfig struct {
+	// Enable pre-commit hook
+	PreCommit bool `yaml:"pre_commit,omitempty"`
+
+	// Enable pre-push hook
+	PrePush bool `yaml:"pre_push,omitempty"`
+
+	// Enable commit-msg hook
+	CommitMsg bool `yaml:"commit_msg,omitempty"`
+}
+
+// WatchConfig represents watch mode configuration
+type WatchConfig struct {
+	Enabled bool     `yaml:"enabled"`
+	Paths   []string `yaml:"paths,omitempty"`
+	Command string   `yaml:"command"`
+}
+
+// WordPressConfig represents WordPress configuration
+type WordPressConfig struct {
+	Version       string                 `yaml:"version,omitempty"`
+	Locale        string                 `yaml:"locale,omitempty"`
+	Constants     map[string]interface{} `yaml:"constants,omitempty"`
+	TablePrefix   string                 `yaml:"table_prefix,omitempty"`
+	SearchReplace SearchReplaceConfig    `yaml:"search_replace,omitempty"`
+}
+
+// SearchReplaceConfig represents search-replace configuration
+type SearchReplaceConfig struct {
+	Network     []SearchReplacePair `yaml:"network,omitempty"`
+	Sites       []SiteSearchReplace `yaml:"sites,omitempty"`
+	SkipColumns []string            `yaml:"skip_columns,omitempty"`
+	SkipTables  []string            `yaml:"skip_tables,omitempty"`
+}
+
+// SearchReplacePair represents a search-replace pair
+type SearchReplacePair struct {
+	Old string `yaml:"old"`
+	New string `yaml:"new"`
+}
+
+// SiteSearchReplace represents search-replace for a specific site
+type SiteSearchReplace struct {
+	Old string `yaml:"old"`
+	New string `yaml:"new"`
+	URL string `yaml:"url"`
+}
+
+// MediaConfig represents remote media configuration
+type MediaConfig struct {
+	ProxyEnabled     bool           `yaml:"proxy_enabled"`
+	PrimarySource    string         `yaml:"primary_source,omitempty"`
+	BunnyCDN         BunnyCDNConfig `yaml:"bunnycdn,omitempty"`
+	WPEngineFallback bool           `yaml:"wpengine_fallback"`
+	Cache            CacheConfig    `yaml:"cache,omitempty"`
+}
+
+// BunnyCDNConfig represents BunnyCDN configuration
+type BunnyCDNConfig struct {
+	Hostname    string `yaml:"hostname"`
+	PullZone    string `yaml:"pull_zone"`
+	StorageZone string `yaml:"storage_zone"`
+}
+
+// CacheConfig represents cache configuration
+type CacheConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	Directory string `yaml:"directory"`
+	MaxSize   string `yaml:"max_size"`
+	TTL       int    `yaml:"ttl"`
+}
+
+// CredentialsConfig represents credentials references
+type CredentialsConfig struct {
+	WPEngine CredentialRef `yaml:"wpengine,omitempty"`
+	GitHub   CredentialRef `yaml:"github,omitempty"`
+	SSH      CredentialRef `yaml:"ssh,omitempty"`
+}
+
+// CredentialRef represents a keychain reference
+type CredentialRef struct {
+	KeychainService string `yaml:"keychain_service"`
+	KeychainAccount string `yaml:"keychain_account"`
+}
+
+// LoggingConfig represents logging configuration
+type LoggingConfig struct {
+	Level      string `yaml:"level"` // debug, info, warn, error
+	File       string `yaml:"file"`
+	MaxSize    string `yaml:"max_size"`
+	MaxBackups int    `yaml:"max_backups"`
+	MaxAge     int    `yaml:"max_age"`
+	Format     string `yaml:"format"` // json, text
+	Timestamp  bool   `yaml:"timestamp"`
+	Caller     bool   `yaml:"caller"`
+}
+
+// SnapshotsConfig represents snapshot configuration
+type SnapshotsConfig struct {
+	Directory                string          `yaml:"directory"`
+	AutoSnapshotBeforePull   bool            `yaml:"auto_snapshot_before_pull"`
+	AutoSnapshotBeforeImport bool            `yaml:"auto_snapshot_before_import"`
+	Retention                RetentionConfig `yaml:"retention,omitempty"`
+	Compression              string          `yaml:"compression,omitempty"`
+}
+
+// RetentionConfig represents snapshot retention configuration
+type RetentionConfig struct {
+	Auto   int `yaml:"auto"`   // days
+	Manual int `yaml:"manual"` // days
+}
+
+// PerformanceConfig represents performance tuning configuration
+type PerformanceConfig struct {
+	ParallelDownloads       int `yaml:"parallel_downloads"`
+	RsyncBandwidthLimit     int `yaml:"rsync_bandwidth_limit"` // KB/s
+	DatabaseImportBatchSize int `yaml:"database_import_batch_size"`
+}
+
+// ToYAML converts the config to YAML
+func (c *Config) ToYAML() ([]byte, error) {
+	return yaml.Marshal(c)
+}
+
+// FromYAML populates the config from YAML
+func (c *Config) FromYAML(data []byte) error {
+	return yaml.Unmarshal(data, c)
+}
+
+// Defaults returns a config with default values
+func Defaults() *Config {
+	return &Config{
+		Version: 1,
+		Project: ProjectConfig{
+			Type: "wordpress-multisite",
+			Mode: "subdomain",
+		},
+		DDEV: DDEVConfig{
+			PHPVersion:      "8.1",
+			MySQLVersion:    "8.0",
+			MySQLType:       "mysql",
+			WebserverType:   "nginx-fpm",
+			RouterHTTPPort:  "80",
+			RouterHTTPSPort: "443",
+			MailHogPort:     "8025",
+			NFSMountEnabled: false,
+			MutagenEnabled:  false,
+			XdebugEnabled:   false,
+			NodeJSVersion:   "20",
+			ComposerVersion: "2",
+		},
+		WPEngine: WPEngineConfig{
+			Environment: "production",
+			SSHGateway:  "ssh.wpengine.net",
+			Backup: WPEngineBackupConfig{
+				AutoSnapshot:   true,
+				SkipLogs:       true,
+				SkipTransients: true,
+				SkipSpam:       true,
+			},
+		},
+		Repository: RepositoryConfig{
+			Branch:     "main",
+			Private:    true,
+			Depth:      1,
+			Submodules: false,
+		},
+		WordPress: WordPressConfig{
+			Version:     "latest",
+			Locale:      "en_US",
+			TablePrefix: "wp_",
+		},
+		Media: MediaConfig{
+			ProxyEnabled:     true,
+			WPEngineFallback: true,
+			Cache: CacheConfig{
+				Enabled:   true,
+				Directory: ".stax/media-cache",
+				MaxSize:   "1GB",
+				TTL:       86400,
+			},
+		},
+		Logging: LoggingConfig{
+			Level:      "info",
+			File:       "~/.stax/logs/stax.log",
+			MaxSize:    "10MB",
+			MaxBackups: 5,
+			MaxAge:     30,
+			Format:     "json",
+			Timestamp:  true,
+			Caller:     false,
+		},
+		Snapshots: SnapshotsConfig{
+			Directory:                "~/.stax/snapshots",
+			AutoSnapshotBeforePull:   true,
+			AutoSnapshotBeforeImport: true,
+			Retention: RetentionConfig{
+				Auto:   7,
+				Manual: 30,
+			},
+			Compression: "gzip",
+		},
+		Performance: PerformanceConfig{
+			ParallelDownloads:       4,
+			RsyncBandwidthLimit:     0,
+			DatabaseImportBatchSize: 1000,
+		},
 	}
-
-	var config ProjectConfig
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
-	return &config, nil
-}
-
-func (c *ProjectConfig) Save(projectPath string) error {
-	v := viper.New()
-	v.SetConfigName(ConfigFileName)
-	v.SetConfigType("yaml")
-	v.AddConfigPath(projectPath)
-	
-	// Set all values
-	v.Set("name", c.Name)
-	v.Set("type", c.Type)
-	v.Set("php_version", c.PHPVersion)
-	v.Set("webserver", c.WebServer)
-	v.Set("database", c.Database)
-	v.Set("wordpress", c.WordPress)
-	v.Set("wpengine", c.WPEngine)
-	v.Set("plugins", c.Plugins)
-	v.Set("environment", c.Environment)
-	
-	configPath := filepath.Join(projectPath, ConfigFileName+".yaml")
-	return v.WriteConfigAs(configPath)
-}
-
-func setDefaults(v *viper.Viper) {
-	v.SetDefault("type", "wordpress")
-	v.SetDefault("php_version", "8.2")
-	v.SetDefault("webserver", "nginx-fpm")
-	v.SetDefault("database", "mysql:8.0")
-	v.SetDefault("wordpress.url", "https://localhost")
-	v.SetDefault("wordpress.title", "My WordPress Site")
-	v.SetDefault("wordpress.admin_user", "admin")
-	v.SetDefault("wordpress.admin_email", "admin@localhost.local")
-}
-
-func Exists(projectPath string) bool {
-	configPath := filepath.Join(projectPath, ConfigFileName+".yaml")
-	_, err := os.Stat(configPath)
-	return err == nil
 }

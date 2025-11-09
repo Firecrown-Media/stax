@@ -1,49 +1,50 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/Firecrown-Media/stax/pkg/ddev"
+	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/spf13/cobra"
 )
 
+var (
+	statusJSON bool
+)
+
+// statusCmd represents the status command
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Show status of DDEV projects",
-	Long:  `Show the status of all DDEV projects or the current project.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		projectPath, _ := cmd.Flags().GetString("path")
-		if projectPath == "" {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("failed to get current directory: %w", err)
-			}
-			projectPath = cwd
-		}
+	Short: "Show environment status",
+	Long: `Show detailed status information about the DDEV environment,
+including container health, URLs, configuration, database info, and
+WPEngine sync status.`,
+	Aliases: []string{"s"},
+	Example: `  # Show status
+  stax status
 
-		// Show general DDEV project list
-		fmt.Printf("📋 DDEV Projects Overview:\n")
-		fmt.Printf("========================\n")
-		if err := ddev.Status(projectPath); err != nil {
-			return fmt.Errorf("failed to get DDEV status: %w", err)
-		}
-
-		// If we're in a DDEV project directory, also show detailed info
-		if ddev.IsProject(projectPath) {
-			fmt.Printf("\n🔍 Current Project Details:\n")
-			fmt.Printf("==========================\n")
-			if err := ddev.Describe(projectPath); err != nil {
-				fmt.Printf("⚠️  Failed to get project details: %v\n", err)
-			}
-		}
-
-		return nil
-	},
+  # Show status as JSON
+  stax status --json`,
+	RunE: runStatus,
 }
 
 func init() {
 	rootCmd.AddCommand(statusCmd)
 
-	statusCmd.Flags().StringP("path", "p", "", "path to project (default: current directory)")
+	statusCmd.Flags().BoolVar(&statusJSON, "json", false, "output as JSON")
+}
+
+func runStatus(cmd *cobra.Command, args []string) error {
+	ui.PrintHeader("Environment Status")
+
+	// TODO: Get DDEV status
+	// TODO: Get container health
+	// TODO: Get URLs from config
+	// TODO: Get database info
+	// TODO: Get WPEngine sync info
+	// TODO: Format as JSON if requested
+
+	ui.Info("Environment status is not yet implemented")
+	ui.Info("This is a placeholder for DDEV integration")
+
+	ui.Section("Environment: Not Running")
+
+	return nil
 }

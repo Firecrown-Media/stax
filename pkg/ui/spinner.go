@@ -1,110 +1,78 @@
 package ui
 
 import (
-	"fmt"
-	"sync"
 	"time"
+
+	"github.com/briandowns/spinner"
 )
 
+// Spinner wraps the briandowns/spinner library
 type Spinner struct {
-	message    string
-	chars      []string
-	delay      time.Duration
-	active     bool
-	mutex      sync.Mutex
-	stopChan   chan bool
-	doneChan   chan bool
+	s *spinner.Spinner
 }
 
+// NewSpinner creates a new spinner with a message
 func NewSpinner(message string) *Spinner {
-	return &Spinner{
-		message:  message,
-		chars:    []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"},
-		delay:    100 * time.Millisecond,
-		stopChan: make(chan bool, 1),
-		doneChan: make(chan bool, 1),
+	if quiet {
+		return &Spinner{s: nil}
+	}
+
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Suffix = " " + message
+	s.Color("cyan")
+
+	return &Spinner{s: s}
+}
+
+// Start starts the spinner
+func (sp *Spinner) Start() {
+	if sp.s != nil && !quiet {
+		sp.s.Start()
 	}
 }
 
-func (s *Spinner) Start() {
-	s.mutex.Lock()
-	if s.active {
-		s.mutex.Unlock()
-		return
+// Stop stops the spinner
+func (sp *Spinner) Stop() {
+	if sp.s != nil {
+		sp.s.Stop()
 	}
-	s.active = true
-	s.mutex.Unlock()
-
-	go func() {
-		i := 0
-		for {
-			select {
-			case <-s.stopChan:
-				fmt.Printf("\r\033[K")
-				s.doneChan <- true
-				return
-			default:
-				fmt.Printf("\r%s %s", s.chars[i%len(s.chars)], s.message)
-				i++
-				time.Sleep(s.delay)
-			}
-		}
-	}()
 }
 
-func (s *Spinner) Stop() {
-	s.mutex.Lock()
-	if !s.active {
-		s.mutex.Unlock()
-		return
+// Success stops the spinner and shows a success message
+func (sp *Spinner) Success(message string) {
+	if sp.s != nil {
+		sp.s.Stop()
 	}
-	s.active = false
-	s.mutex.Unlock()
-
-	s.stopChan <- true
-	<-s.doneChan
+	Success(message)
 }
 
-func (s *Spinner) UpdateMessage(message string) {
-	s.mutex.Lock()
-	s.message = message
-	s.mutex.Unlock()
+// Error stops the spinner and shows an error message
+func (sp *Spinner) Error(message string) {
+	if sp.s != nil {
+		sp.s.Stop()
+	}
+	Error(message)
 }
 
-func (s *Spinner) Success(message string) {
-	s.Stop()
-	fmt.Printf("✅ %s\n", message)
+// UpdateMessage updates the spinner message
+func (sp *Spinner) UpdateMessage(message string) {
+	if sp.s != nil {
+		sp.s.Suffix = " " + message
+	}
 }
 
-func (s *Spinner) Error(message string) {
-	s.Stop()
-	fmt.Printf("❌ %s\n", message)
-}
-
-func (s *Spinner) Warning(message string) {
-	s.Stop()
-	fmt.Printf("⚠️  %s\n", message)
-}
-
-// Utility functions for quick operations
+// WithSpinner runs a function with a spinner
 func WithSpinner(message string, fn func() error) error {
-	spinner := NewSpinner(message)
-	spinner.Start()
-	defer spinner.Stop()
-	
-	return fn()
-}
+	s := NewSpinner(message)
+	s.Start()
+	defer s.Stop()
 
-func WithSpinnerResult(message string, fn func() error) error {
-	spinner := NewSpinner(message)
-	spinner.Start()
-	
 	err := fn()
 	if err != nil {
-		spinner.Error(fmt.Sprintf("Failed: %s", message))
+		s.Error(err.Error())
 		return err
-	} else {
-		spinner.Success(message)
-		return nil
 	}
+
+	s.Success(message + " - Done!")
+	return nil
 }
