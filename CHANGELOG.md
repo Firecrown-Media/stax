@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/Firecrown-Media/stax/compare/v0.4.0...v0.4.1) (2025-11-09)
+
+
+### Bug Fixes
+
+* resolve platform-specific keychain build issues for releases ([#25](https://github.com/Firecrown-Media/stax/issues/25)) ([e39f9ab](https://github.com/Firecrown-Media/stax/commit/e39f9ab1e638ff8fc7d585b5395767104634cad2))
+
 ## [0.4.0](https://github.com/Firecrown-Media/stax/compare/v0.3.0...v0.4.0) (2025-11-09)
 
 
