@@ -37,8 +37,8 @@ go.work.sum
 *.swo
 *~
 
-# Build directory
-build/
+# Build directory (root only, not pkg/build)
+/build/
 
 # GoReleaser dist directory
 dist/
