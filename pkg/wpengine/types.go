@@ -15,13 +15,13 @@ type Install struct {
 
 // InstallDetails represents detailed information about a WPEngine installation
 type InstallDetails struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	PrimaryDomain    string   `json:"primary_domain"`
-	PHPVersion       string   `json:"php_version"`
-	MySQLVersion     string   `json:"mysql_version"`
-	WordPressVersion string   `json:"wordpress_version"`
-	Environment      string   `json:"environment"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	PrimaryDomain    string `json:"primary_domain"`
+	PHPVersion       string `json:"php_version"`
+	MySQLVersion     string `json:"mysql_version"`
+	WordPressVersion string `json:"wordpress_version"`
+	Environment      string `json:"environment"`
 	DiskUsage        struct {
 		Used  int64 `json:"used"`
 		Total int64 `json:"total"`

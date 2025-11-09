@@ -11,20 +11,20 @@ import (
 
 // WPEngineProvider implements the Provider interface for WPEngine
 type WPEngineProvider struct {
-	apiClient  *wpengine.Client
-	sshClient  *wpengine.SSHClient
-	install    string
-	apiUser    string
+	apiClient   *wpengine.Client
+	sshClient   *wpengine.SSHClient
+	install     string
+	apiUser     string
 	apiPassword string
-	sshKey     string
-	sshGateway string
+	sshKey      string
+	sshGateway  string
 }
 
 // Ensure WPEngineProvider implements all required interfaces
 var (
-	_ provider.Provider        = (*WPEngineProvider)(nil)
-	_ provider.BackupManager   = (*WPEngineProvider)(nil)
-	_ provider.RemoteExecutor  = (*WPEngineProvider)(nil)
+	_ provider.Provider       = (*WPEngineProvider)(nil)
+	_ provider.BackupManager  = (*WPEngineProvider)(nil)
+	_ provider.RemoteExecutor = (*WPEngineProvider)(nil)
 )
 
 func init() {

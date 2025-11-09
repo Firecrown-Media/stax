@@ -35,13 +35,13 @@ type User struct {
 
 // WPConfig represents WordPress configuration
 type WPConfig struct {
-	DBName     string
-	DBUser     string
-	DBPassword string
-	DBHost     string
-	DBPrefix   string
-	AuthKey    string
+	DBName        string
+	DBUser        string
+	DBPassword    string
+	DBHost        string
+	DBPrefix      string
+	AuthKey       string
 	SecureAuthKey string
-	LoggedInKey string
-	NonceKey string
+	LoggedInKey   string
+	NonceKey      string
 }

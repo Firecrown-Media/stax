@@ -55,21 +55,21 @@ type ProjectConfig struct {
 
 // WPEngineConfig represents WPEngine integration settings
 type WPEngineConfig struct {
-	Install     string              `yaml:"install"`
-	Environment string              `yaml:"environment"` // production, staging, development
-	AccountName string              `yaml:"account_name,omitempty"`
-	SSHGateway  string              `yaml:"ssh_gateway,omitempty"`
-	Backup      WPEngineBackupConfig `yaml:"backup,omitempty"`
+	Install     string                `yaml:"install"`
+	Environment string                `yaml:"environment"` // production, staging, development
+	AccountName string                `yaml:"account_name,omitempty"`
+	SSHGateway  string                `yaml:"ssh_gateway,omitempty"`
+	Backup      WPEngineBackupConfig  `yaml:"backup,omitempty"`
 	Domains     WPEngineDomainsConfig `yaml:"domains,omitempty"`
 }
 
 // WPEngineBackupConfig represents backup preferences
 type WPEngineBackupConfig struct {
-	AutoSnapshot     bool     `yaml:"auto_snapshot"`
-	SkipLogs        bool     `yaml:"skip_logs"`
-	SkipTransients  bool     `yaml:"skip_transients"`
-	SkipSpam        bool     `yaml:"skip_spam"`
-	ExcludeTables   []string `yaml:"exclude_tables,omitempty"`
+	AutoSnapshot   bool     `yaml:"auto_snapshot"`
+	SkipLogs       bool     `yaml:"skip_logs"`
+	SkipTransients bool     `yaml:"skip_transients"`
+	SkipSpam       bool     `yaml:"skip_spam"`
+	ExcludeTables  []string `yaml:"exclude_tables,omitempty"`
 }
 
 // WPEngineDomainsConfig represents domain mapping
@@ -274,19 +274,19 @@ type WatchConfig struct {
 
 // WordPressConfig represents WordPress configuration
 type WordPressConfig struct {
-	Version       string                     `yaml:"version,omitempty"`
-	Locale        string                     `yaml:"locale,omitempty"`
-	Constants     map[string]interface{}     `yaml:"constants,omitempty"`
-	TablePrefix   string                     `yaml:"table_prefix,omitempty"`
-	SearchReplace SearchReplaceConfig        `yaml:"search_replace,omitempty"`
+	Version       string                 `yaml:"version,omitempty"`
+	Locale        string                 `yaml:"locale,omitempty"`
+	Constants     map[string]interface{} `yaml:"constants,omitempty"`
+	TablePrefix   string                 `yaml:"table_prefix,omitempty"`
+	SearchReplace SearchReplaceConfig    `yaml:"search_replace,omitempty"`
 }
 
 // SearchReplaceConfig represents search-replace configuration
 type SearchReplaceConfig struct {
-	Network      []SearchReplacePair `yaml:"network,omitempty"`
-	Sites        []SiteSearchReplace `yaml:"sites,omitempty"`
-	SkipColumns  []string            `yaml:"skip_columns,omitempty"`
-	SkipTables   []string            `yaml:"skip_tables,omitempty"`
+	Network     []SearchReplacePair `yaml:"network,omitempty"`
+	Sites       []SiteSearchReplace `yaml:"sites,omitempty"`
+	SkipColumns []string            `yaml:"skip_columns,omitempty"`
+	SkipTables  []string            `yaml:"skip_tables,omitempty"`
 }
 
 // SearchReplacePair represents a search-replace pair
@@ -304,11 +304,11 @@ type SiteSearchReplace struct {
 
 // MediaConfig represents remote media configuration
 type MediaConfig struct {
-	ProxyEnabled      bool          `yaml:"proxy_enabled"`
-	PrimarySource     string        `yaml:"primary_source,omitempty"`
-	BunnyCDN          BunnyCDNConfig `yaml:"bunnycdn,omitempty"`
-	WPEngineFallback  bool          `yaml:"wpengine_fallback"`
-	Cache             CacheConfig   `yaml:"cache,omitempty"`
+	ProxyEnabled     bool           `yaml:"proxy_enabled"`
+	PrimarySource    string         `yaml:"primary_source,omitempty"`
+	BunnyCDN         BunnyCDNConfig `yaml:"bunnycdn,omitempty"`
+	WPEngineFallback bool           `yaml:"wpengine_fallback"`
+	Cache            CacheConfig    `yaml:"cache,omitempty"`
 }
 
 // BunnyCDNConfig represents BunnyCDN configuration
@@ -353,11 +353,11 @@ type LoggingConfig struct {
 
 // SnapshotsConfig represents snapshot configuration
 type SnapshotsConfig struct {
-	Directory              string            `yaml:"directory"`
-	AutoSnapshotBeforePull bool              `yaml:"auto_snapshot_before_pull"`
+	Directory                string          `yaml:"directory"`
+	AutoSnapshotBeforePull   bool            `yaml:"auto_snapshot_before_pull"`
 	AutoSnapshotBeforeImport bool            `yaml:"auto_snapshot_before_import"`
-	Retention              RetentionConfig   `yaml:"retention,omitempty"`
-	Compression            string            `yaml:"compression,omitempty"`
+	Retention                RetentionConfig `yaml:"retention,omitempty"`
+	Compression              string          `yaml:"compression,omitempty"`
 }
 
 // RetentionConfig represents snapshot retention configuration
@@ -368,8 +368,8 @@ type RetentionConfig struct {
 
 // PerformanceConfig represents performance tuning configuration
 type PerformanceConfig struct {
-	ParallelDownloads      int `yaml:"parallel_downloads"`
-	RsyncBandwidthLimit    int `yaml:"rsync_bandwidth_limit"` // KB/s
+	ParallelDownloads       int `yaml:"parallel_downloads"`
+	RsyncBandwidthLimit     int `yaml:"rsync_bandwidth_limit"` // KB/s
 	DatabaseImportBatchSize int `yaml:"database_import_batch_size"`
 }
 

@@ -122,19 +122,19 @@ var WPEnginePHPVersions = []string{
 // WPEngineSupportsFeature checks if a specific feature is supported
 func WPEngineSupportsFeature(feature string) bool {
 	supported := map[string]bool{
-		"ssh_access":        true,
-		"wp_cli":            true,
-		"git_deployments":   true,
-		"staging":           true,
-		"cdn":               true,
-		"ssl":               true,
-		"backups":           true,
-		"redis":             true,
-		"database_import":   false,
-		"file_upload":       false,
-		"root_access":       false,
-		"custom_php_ini":    false,
-		"backup_download":   false,
+		"ssh_access":      true,
+		"wp_cli":          true,
+		"git_deployments": true,
+		"staging":         true,
+		"cdn":             true,
+		"ssl":             true,
+		"backups":         true,
+		"redis":           true,
+		"database_import": false,
+		"file_upload":     false,
+		"root_access":     false,
+		"custom_php_ini":  false,
+		"backup_download": false,
 	}
 
 	return supported[feature]

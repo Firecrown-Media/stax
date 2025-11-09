@@ -8,14 +8,14 @@ import (
 
 // MockWPEngineClient is a mock implementation of WPEngine client
 type MockWPEngineClient struct {
-	GetInstallFunc       func(install string) (*wpengine.Install, error)
-	ListBackupsFunc      func(install string) ([]wpengine.Backup, error)
-	CreateBackupFunc     func(install string, description string) (*wpengine.Backup, error)
-	DownloadBackupFunc   func(install, backupID, destination string) error
-	GetSitesFunc         func(install string) ([]wpengine.Site, error)
-	DownloadFilesFunc    func(install, remotePath, localPath string) error
-	ExecuteCommandFunc   func(install, command string) (string, error)
-	TestConnectionFunc   func() error
+	GetInstallFunc     func(install string) (*wpengine.Install, error)
+	ListBackupsFunc    func(install string) ([]wpengine.Backup, error)
+	CreateBackupFunc   func(install string, description string) (*wpengine.Backup, error)
+	DownloadBackupFunc func(install, backupID, destination string) error
+	GetSitesFunc       func(install string) ([]wpengine.Site, error)
+	DownloadFilesFunc  func(install, remotePath, localPath string) error
+	ExecuteCommandFunc func(install, command string) (string, error)
+	TestConnectionFunc func() error
 }
 
 // NewMockWPEngineClient creates a new mock WPEngine client

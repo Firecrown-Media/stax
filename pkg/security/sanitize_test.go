@@ -218,7 +218,7 @@ func TestSanitizeFilename(t *testing.T) {
 
 		// Invalid cases
 		{"empty", "", true, ""},
-		{"with slash", "path/file.txt", false, "pathfile.txt"}, // Slashes are removed
+		{"with slash", "path/file.txt", false, "pathfile.txt"},      // Slashes are removed
 		{"with backslash", "path\\file.txt", false, "pathfile.txt"}, // Backslashes are removed
 		{"double dot", "..", true, ""},
 		{"single dot", ".", true, ""},

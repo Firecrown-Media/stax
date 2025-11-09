@@ -19,11 +19,11 @@ const (
 
 // Client handles WPEngine API operations
 type Client struct {
-	baseURL    string
-	httpClient *http.Client
-	apiUser    string
+	baseURL     string
+	httpClient  *http.Client
+	apiUser     string
 	apiPassword string
-	install    string
+	install     string
 }
 
 // NewClient creates a new WPEngine API client
@@ -33,7 +33,7 @@ func NewClient(apiUser, apiPassword, install string) *Client {
 		httpClient: &http.Client{
 			Timeout: DefaultTimeout,
 		},
-		apiUser:    apiUser,
+		apiUser:     apiUser,
 		apiPassword: apiPassword,
 		install:     install,
 	}

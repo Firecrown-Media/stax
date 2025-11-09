@@ -121,9 +121,9 @@ func (p *LocalProvider) GetSiteMetadata(site *provider.Site) (*provider.SiteMeta
 
 	return &provider.SiteMetadata{
 		Site:             site,
-		PHPVersion:       "8.1",  // Would query DDEV
-		MySQLVersion:     "8.0",  // Would query DDEV
-		WordPressVersion: "6.4",  // Would query WP-CLI
+		PHPVersion:       "8.1", // Would query DDEV
+		MySQLVersion:     "8.0", // Would query DDEV
+		WordPressVersion: "6.4", // Would query WP-CLI
 		DiskUsage: provider.DiskUsage{
 			Used:  0,
 			Total: 0,

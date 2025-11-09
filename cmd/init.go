@@ -6,18 +6,18 @@ import (
 )
 
 var (
-	initName           string
-	initType           string
-	initMode           string
-	initPHPVersion     string
-	initMySQLVersion   string
-	initRepo           string
-	initBranch         string
+	initName            string
+	initType            string
+	initMode            string
+	initPHPVersion      string
+	initMySQLVersion    string
+	initRepo            string
+	initBranch          string
 	initWPEngineInstall string
-	initWPEngineEnv    string
-	initInteractive    bool
-	initSkipDB         bool
-	initSkipBuild      bool
+	initWPEngineEnv     string
+	initInteractive     bool
+	initSkipDB          bool
+	initSkipBuild       bool
 )
 
 // initCmd represents the init command

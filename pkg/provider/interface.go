@@ -98,15 +98,15 @@ type Site struct {
 
 // SiteMetadata contains detailed information about a site
 type SiteMetadata struct {
-	Site             *Site    `json:"site"`
-	PHPVersion       string   `json:"php_version"`
-	MySQLVersion     string   `json:"mysql_version"`
-	WordPressVersion string   `json:"wordpress_version"`
+	Site             *Site     `json:"site"`
+	PHPVersion       string    `json:"php_version"`
+	MySQLVersion     string    `json:"mysql_version"`
+	WordPressVersion string    `json:"wordpress_version"`
 	DiskUsage        DiskUsage `json:"disk_usage"`
-	Domains          []string `json:"domains"`
-	Features         []string `json:"features"` // e.g., "ssl", "cdn", "backups"
-	CreatedAt        string   `json:"created_at"`
-	UpdatedAt        string   `json:"updated_at"`
+	Domains          []string  `json:"domains"`
+	Features         []string  `json:"features"` // e.g., "ssl", "cdn", "backups"
+	CreatedAt        string    `json:"created_at"`
+	UpdatedAt        string    `json:"updated_at"`
 }
 
 // DiskUsage represents disk space usage
@@ -117,9 +117,9 @@ type DiskUsage struct {
 
 // Environment represents a site environment
 type Environment struct {
-	Name         string `json:"name"`           // e.g., "production", "staging"
+	Name         string `json:"name"` // e.g., "production", "staging"
 	URL          string `json:"url"`
-	Status       string `json:"status"`         // e.g., "active", "inactive"
+	Status       string `json:"status"` // e.g., "active", "inactive"
 	IsDefault    bool   `json:"is_default"`
 	LastDeployAt string `json:"last_deploy_at"`
 }
@@ -128,12 +128,12 @@ type Environment struct {
 
 // DatabaseExportOptions configures database export behavior
 type DatabaseExportOptions struct {
-	ExcludeTables []string `json:"exclude_tables"`  // Tables to exclude
-	SkipLogs      bool     `json:"skip_logs"`       // Skip log tables
-	SkipTransients bool    `json:"skip_transients"` // Skip transient data
-	SkipSpam      bool     `json:"skip_spam"`       // Skip spam comments
-	Compress      bool     `json:"compress"`        // Compress output (gzip)
-	IncludePrefix bool     `json:"include_prefix"`  // Include table prefix detection
+	ExcludeTables  []string `json:"exclude_tables"`  // Tables to exclude
+	SkipLogs       bool     `json:"skip_logs"`       // Skip log tables
+	SkipTransients bool     `json:"skip_transients"` // Skip transient data
+	SkipSpam       bool     `json:"skip_spam"`       // Skip spam comments
+	Compress       bool     `json:"compress"`        // Compress output (gzip)
+	IncludePrefix  bool     `json:"include_prefix"`  // Include table prefix detection
 }
 
 // DatabaseImportOptions configures database import behavior
@@ -157,14 +157,14 @@ type DatabaseCredentials struct {
 
 // SyncOptions configures file synchronization
 type SyncOptions struct {
-	Source         string   `json:"source"`           // Source path (optional, provider determines default)
-	Destination    string   `json:"destination"`      // Local destination path
-	Include        []string `json:"include"`          // Patterns to include
-	Exclude        []string `json:"exclude"`          // Patterns to exclude
-	Delete         bool     `json:"delete"`           // Delete files not on remote
-	DryRun         bool     `json:"dry_run"`          // Perform dry run
-	BandwidthLimit int      `json:"bandwidth_limit"`  // KB/s limit
-	Progress       bool     `json:"progress"`         // Show progress
+	Source         string   `json:"source"`          // Source path (optional, provider determines default)
+	Destination    string   `json:"destination"`     // Local destination path
+	Include        []string `json:"include"`         // Patterns to include
+	Exclude        []string `json:"exclude"`         // Patterns to exclude
+	Delete         bool     `json:"delete"`          // Delete files not on remote
+	DryRun         bool     `json:"dry_run"`         // Perform dry run
+	BandwidthLimit int      `json:"bandwidth_limit"` // KB/s limit
+	Progress       bool     `json:"progress"`        // Show progress
 }
 
 // ===== Provider Capabilities =====
@@ -179,13 +179,13 @@ type ProviderCapabilities struct {
 	FileSync       bool `json:"file_sync"`
 
 	// Optional capabilities
-	Deployment      bool `json:"deployment"`        // Git-based deployments
-	Environments    bool `json:"environments"`      // Multi-environment support
-	Backups         bool `json:"backups"`           // Automated backups
-	RemoteExecution bool `json:"remote_execution"`  // SSH/WP-CLI
-	MediaManagement bool `json:"media_management"`  // CDN/media proxy
-	SSHAccess       bool `json:"ssh_access"`        // Direct SSH access
-	APIAccess       bool `json:"api_access"`        // REST API access
+	Deployment      bool `json:"deployment"`       // Git-based deployments
+	Environments    bool `json:"environments"`     // Multi-environment support
+	Backups         bool `json:"backups"`          // Automated backups
+	RemoteExecution bool `json:"remote_execution"` // SSH/WP-CLI
+	MediaManagement bool `json:"media_management"` // CDN/media proxy
+	SSHAccess       bool `json:"ssh_access"`       // Direct SSH access
+	APIAccess       bool `json:"api_access"`       // REST API access
 
 	// Advanced capabilities
 	Scaling    bool `json:"scaling"`    // Auto-scaling support
@@ -221,7 +221,7 @@ type DeployOptions struct {
 // Deployment represents a deployment
 type Deployment struct {
 	ID         string `json:"id"`
-	Status     string `json:"status"`      // "pending", "in_progress", "completed", "failed"
+	Status     string `json:"status"` // "pending", "in_progress", "completed", "failed"
 	Branch     string `json:"branch"`
 	Commit     string `json:"commit"`
 	Message    string `json:"message"`
@@ -260,7 +260,7 @@ type EnvironmentManager interface {
 
 // EnvironmentOptions configures environment creation
 type EnvironmentOptions struct {
-	CloneFrom  string            `json:"clone_from"`  // Clone from existing environment
+	CloneFrom  string            `json:"clone_from"` // Clone from existing environment
 	PHPVersion string            `json:"php_version"`
 	Domain     string            `json:"domain"`
 	Metadata   map[string]string `json:"metadata"`
@@ -289,11 +289,11 @@ type BackupManager interface {
 // Backup represents a backup
 type Backup struct {
 	ID          string `json:"id"`
-	Type        string `json:"type"`        // "manual", "automatic", "scheduled"
+	Type        string `json:"type"` // "manual", "automatic", "scheduled"
 	Description string `json:"description"`
 	Size        int64  `json:"size"`
 	CreatedAt   string `json:"created_at"`
-	Status      string `json:"status"`     // "pending", "completed", "failed"
+	Status      string `json:"status"` // "pending", "completed", "failed"
 	ExpiresAt   string `json:"expires_at"`
 }
 

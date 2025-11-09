@@ -13,27 +13,27 @@ import (
 type MultisiteType string
 
 const (
-	MultisiteTypeSubdomain      MultisiteType = "subdomain"
-	MultisiteTypeSubdirectory   MultisiteType = "subdirectory"
-	MultisiteTypeNone           MultisiteType = "none"
+	MultisiteTypeSubdomain    MultisiteType = "subdomain"
+	MultisiteTypeSubdirectory MultisiteType = "subdirectory"
+	MultisiteTypeNone         MultisiteType = "none"
 )
 
 // Subsite represents a single site in a multisite network
 type Subsite struct {
-	ID         int    `json:"blog_id"`
-	SiteID     int    `json:"site_id"`
-	Domain     string `json:"domain"`
-	Path       string `json:"path"`
-	Registered string `json:"registered"`
+	ID          int    `json:"blog_id"`
+	SiteID      int    `json:"site_id"`
+	Domain      string `json:"domain"`
+	Path        string `json:"path"`
+	Registered  string `json:"registered"`
 	LastUpdated string `json:"last_updated"`
-	Public     bool   `json:"public"`
-	Archived   bool   `json:"archived"`
-	Mature     bool   `json:"mature"`
-	Spam       bool   `json:"spam"`
-	Deleted    bool   `json:"deleted"`
-	LangID     int    `json:"lang_id"`
-	SiteURL    string `json:"siteurl"`
-	Name       string `json:"blogname"`
+	Public      bool   `json:"public"`
+	Archived    bool   `json:"archived"`
+	Mature      bool   `json:"mature"`
+	Spam        bool   `json:"spam"`
+	Deleted     bool   `json:"deleted"`
+	LangID      int    `json:"lang_id"`
+	SiteURL     string `json:"siteurl"`
+	Name        string `json:"blogname"`
 }
 
 // MultisiteConfig represents multisite configuration
@@ -178,17 +178,17 @@ func DetectSubsites(cli *CLI) ([]Subsite, error) {
 		langID, _ := strconv.Atoi(fields[11])
 
 		subsite := Subsite{
-			ID:          blogID,
-			SiteID:      siteID,
-			Domain:      fields[2],
-			Path:        fields[3],
-			Registered:  fields[4] + " " + fields[5],
-			Public:      public == 1,
-			Archived:    archived == 1,
-			Mature:      mature == 1,
-			Spam:        spam == 1,
-			Deleted:     deleted == 1,
-			LangID:      langID,
+			ID:         blogID,
+			SiteID:     siteID,
+			Domain:     fields[2],
+			Path:       fields[3],
+			Registered: fields[4] + " " + fields[5],
+			Public:     public == 1,
+			Archived:   archived == 1,
+			Mature:     mature == 1,
+			Spam:       spam == 1,
+			Deleted:    deleted == 1,
+			LangID:     langID,
 		}
 
 		subsites = append(subsites, subsite)

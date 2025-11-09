@@ -9,11 +9,11 @@ import (
 
 // AWSProvider implements the Provider interface for AWS (EC2, Lightsail, etc.)
 type AWSProvider struct {
-	region       string
-	instanceID   string
-	sshUser      string
-	sshKeyPath   string
-	rdsEndpoint  string
+	region      string
+	instanceID  string
+	sshUser     string
+	sshKeyPath  string
+	rdsEndpoint string
 	// TODO: Add AWS SDK clients
 }
 
@@ -47,9 +47,9 @@ func (p *AWSProvider) Capabilities() provider.ProviderCapabilities {
 		MediaManagement: true,  // S3 integration
 		SSHAccess:       true,
 		APIAccess:       true,
-		Scaling:         true,  // Auto-scaling groups
-		Monitoring:      true,  // CloudWatch
-		Logging:         true,  // CloudWatch Logs
+		Scaling:         true, // Auto-scaling groups
+		Monitoring:      true, // CloudWatch
+		Logging:         true, // CloudWatch Logs
 	}
 }
 

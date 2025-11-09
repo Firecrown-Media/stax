@@ -289,11 +289,11 @@ func TestMergeConfigs(t *testing.T) {
 		{
 			name: "merge multiple fields",
 			base: &Config{
-				Project: ProjectConfig{Name: "base"},
+				Project:  ProjectConfig{Name: "base"},
 				WPEngine: WPEngineConfig{Install: "base-install"},
 			},
 			override: &Config{
-				Project: ProjectConfig{Type: "wordpress"},
+				Project:  ProjectConfig{Type: "wordpress"},
 				WPEngine: WPEngineConfig{Environment: "staging"},
 			},
 			check: func(t *testing.T, result *Config) {

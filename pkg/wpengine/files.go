@@ -207,7 +207,7 @@ func writePrivateKeyToTempFile(privateKey string) (string, error) {
 	tmpFile, err := os.OpenFile(
 		tmpPath,
 		os.O_RDWR|os.O_CREATE|os.O_EXCL, // Exclusive creation
-		0600,                             // Secure permissions at creation
+		0600,                            // Secure permissions at creation
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)

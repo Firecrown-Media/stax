@@ -227,10 +227,10 @@ func (m *MockFileTransfer) ReadFromFile(localPath, remotePath string) error {
 
 // MockProgressReader is a mock io.Reader that tracks progress
 type MockProgressReader struct {
-	reader       io.Reader
-	total        int64
-	current      int64
-	onProgress   func(current, total int64)
+	reader     io.Reader
+	total      int64
+	current    int64
+	onProgress func(current, total int64)
 }
 
 // NewMockProgressReader creates a new mock progress reader

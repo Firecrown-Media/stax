@@ -9,18 +9,18 @@ import (
 
 // MockDDEVManager is a mock implementation of DDEV manager
 type MockDDEVManager struct {
-	IsRunningFunc    func() (bool, error)
-	StartFunc        func() error
-	StopFunc         func() error
-	RestartFunc      func() error
-	DescribeFunc     func() (*ddev.ProjectInfo, error)
-	ExecFunc         func(command string, args ...string) (string, error)
-	ImportDBFunc     func(dbPath string) error
-	ExportDBFunc     func(destination string) error
-	GetLogsFunc      func(service string) (string, error)
-	running          bool
-	lastCommand      string
-	lastArgs         []string
+	IsRunningFunc func() (bool, error)
+	StartFunc     func() error
+	StopFunc      func() error
+	RestartFunc   func() error
+	DescribeFunc  func() (*ddev.ProjectInfo, error)
+	ExecFunc      func(command string, args ...string) (string, error)
+	ImportDBFunc  func(dbPath string) error
+	ExportDBFunc  func(destination string) error
+	GetLogsFunc   func(service string) (string, error)
+	running       bool
+	lastCommand   string
+	lastArgs      []string
 }
 
 // NewMockDDEVManager creates a new mock DDEV manager

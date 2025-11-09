@@ -25,8 +25,8 @@ const (
 
 // SSHClient represents an SSH connection to WPEngine gateway
 type SSHClient struct {
-	client  *ssh.Client
-	config  SSHConfig
+	client *ssh.Client
+	config SSHConfig
 }
 
 // NewSSHClient creates a new SSH client for WPEngine

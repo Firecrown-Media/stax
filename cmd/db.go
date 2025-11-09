@@ -17,14 +17,14 @@ var dbCmd = &cobra.Command{
 }
 
 var (
-	dbEnvironment   string
-	dbSnapshot      bool
-	dbSanitize      bool
-	dbSkipReplace   bool
-	dbExcludeTables string
-	dbSkipLogs      bool
+	dbEnvironment    string
+	dbSnapshot       bool
+	dbSanitize       bool
+	dbSkipReplace    bool
+	dbExcludeTables  string
+	dbSkipLogs       bool
 	dbSkipTransients bool
-	dbSkipSpam      bool
+	dbSkipSpam       bool
 )
 
 // dbPullCmd represents the db:pull command
