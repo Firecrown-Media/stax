@@ -6,13 +6,20 @@ import (
 	"github.com/firecrown-media/stax/pkg/wpengine"
 )
 
+// Site represents a WordPress site (mock-only type for testing)
+type Site struct {
+	ID     int
+	Domain string
+	Path   string
+}
+
 // MockWPEngineClient is a mock implementation of WPEngine client
 type MockWPEngineClient struct {
 	GetInstallFunc     func(install string) (*wpengine.Install, error)
 	ListBackupsFunc    func(install string) ([]wpengine.Backup, error)
 	CreateBackupFunc   func(install string, description string) (*wpengine.Backup, error)
 	DownloadBackupFunc func(install, backupID, destination string) error
-	GetSitesFunc       func(install string) ([]wpengine.Site, error)
+	GetSitesFunc       func(install string) ([]Site, error)
 	DownloadFilesFunc  func(install, remotePath, localPath string) error
 	ExecuteCommandFunc func(install, command string) (string, error)
 	TestConnectionFunc func() error
@@ -23,44 +30,41 @@ func NewMockWPEngineClient() *MockWPEngineClient {
 	return &MockWPEngineClient{
 		GetInstallFunc: func(install string) (*wpengine.Install, error) {
 			return &wpengine.Install{
-				Name:        install,
-				Environment: "production",
-				PHPVersion:  "8.1",
-				Status:      "running",
+				Name:          install,
+				Environment:   "production",
+				PHPVersion:    "8.1",
+				PrimaryDomain: install + ".wpengine.com",
 			}, nil
 		},
 		ListBackupsFunc: func(install string) ([]wpengine.Backup, error) {
 			return []wpengine.Backup{
 				{
-					ID:          "backup-1",
-					Description: "Test backup 1",
-					Created:     "2024-01-01T12:00:00Z",
-					Size:        1024000,
-					Type:        "manual",
+					ID:     "backup-1",
+					Type:   "manual",
+					Size:   1024000,
+					Status: "completed",
 				},
 				{
-					ID:          "backup-2",
-					Description: "Test backup 2",
-					Created:     "2024-01-02T12:00:00Z",
-					Size:        2048000,
-					Type:        "automatic",
+					ID:     "backup-2",
+					Type:   "automatic",
+					Size:   2048000,
+					Status: "completed",
 				},
 			}, nil
 		},
 		CreateBackupFunc: func(install string, description string) (*wpengine.Backup, error) {
 			return &wpengine.Backup{
-				ID:          "backup-new",
-				Description: description,
-				Created:     "2024-01-03T12:00:00Z",
-				Size:        1500000,
-				Type:        "manual",
+				ID:     "backup-new",
+				Type:   "manual",
+				Size:   1500000,
+				Status: "pending",
 			}, nil
 		},
 		DownloadBackupFunc: func(install, backupID, destination string) error {
 			return nil
 		},
-		GetSitesFunc: func(install string) ([]wpengine.Site, error) {
-			return []wpengine.Site{
+		GetSitesFunc: func(install string) ([]Site, error) {
+			return []Site{
 				{
 					ID:     1,
 					Domain: "example.wpengine.com",
@@ -123,7 +127,7 @@ func (m *MockWPEngineClient) DownloadBackup(install, backupID, destination strin
 }
 
 // GetSites mocks getting sites
-func (m *MockWPEngineClient) GetSites(install string) ([]wpengine.Site, error) {
+func (m *MockWPEngineClient) GetSites(install string) ([]Site, error) {
 	if m.GetSitesFunc != nil {
 		return m.GetSitesFunc(install)
 	}
@@ -173,8 +177,8 @@ func (m *MockWPEngineClient) WithEmptyResults() *MockWPEngineClient {
 	m.ListBackupsFunc = func(install string) ([]wpengine.Backup, error) {
 		return []wpengine.Backup{}, nil
 	}
-	m.GetSitesFunc = func(install string) ([]wpengine.Site, error) {
-		return []wpengine.Site{}, nil
+	m.GetSitesFunc = func(install string) ([]Site, error) {
+		return []Site{}, nil
 	}
 	return m
 }

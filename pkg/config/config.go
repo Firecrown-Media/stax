@@ -211,10 +211,10 @@ type BuildComposerConfig struct {
 	IgnorePlatformReqs bool `yaml:"ignore_platform_reqs,omitempty"`
 
 	// Optimize autoloader
-	Optimize bool `yaml:"optimize,omitempty"`
+	Optimize bool `yaml:"optimize"`
 
 	// Skip dev dependencies
-	NoDev bool `yaml:"no_dev,omitempty"`
+	NoDev bool `yaml:"no_dev"`
 }
 
 // BuildNPMConfig represents NPM build configuration
@@ -223,7 +223,7 @@ type BuildNPMConfig struct {
 	InstallArgs string `yaml:"install_args,omitempty"`
 
 	// Build command
-	BuildCommand string `yaml:"build_command,omitempty"`
+	BuildCommand string `yaml:"build_command"`
 
 	// Dev command (npm start)
 	DevCommand string `yaml:"dev_command,omitempty"`
@@ -232,7 +232,7 @@ type BuildNPMConfig struct {
 	Timeout int `yaml:"timeout,omitempty"`
 
 	// Use legacy peer deps
-	LegacyPeerDeps bool `yaml:"legacy_peer_deps,omitempty"`
+	LegacyPeerDeps bool `yaml:"legacy_peer_deps"`
 }
 
 // BuildPHPCSConfig represents PHPCS configuration
