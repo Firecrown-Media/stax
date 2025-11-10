@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/Firecrown-Media/stax/compare/v0.4.1...v0.4.2) (2025-11-10)
+
+
+### Bug Fixes
+
+* credential storage for CGO-disabled builds (Homebrew) ([#28](https://github.com/Firecrown-Media/stax/issues/28)) ([3379b3a](https://github.com/Firecrown-Media/stax/commit/3379b3ae3fafedeb17457dd7bfe3706446de63e7)), closes [#27](https://github.com/Firecrown-Media/stax/issues/27)
+
 ## [0.4.1](https://github.com/Firecrown-Media/stax/compare/v0.4.0...v0.4.1) (2025-11-09)
 
 
