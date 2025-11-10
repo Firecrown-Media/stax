@@ -7,6 +7,7 @@ A comprehensive guide to using Stax for WordPress multisite development.
 ## Table of Contents
 
 - [Introduction](#introduction)
+- [Discovering WPEngine Installs](#discovering-wpengine-installs)
 - [Daily Workflows](#daily-workflows)
 - [Database Management](#database-management)
 - [WordPress Operations](#wordpress-operations)
@@ -29,6 +30,142 @@ Before following this guide, make sure you've:
 - [x] Installed Stax and prerequisites
 - [x] Configured credentials with `stax setup`
 - [x] Initialized at least one project with `stax init`
+
+---
+
+## Discovering WPEngine Installs
+
+Before you can initialize a Stax project, you need to know your WPEngine install name. The `stax list` command helps you discover available installs without needing a stax.yml file first.
+
+### Listing All Installs
+
+**See all WPEngine installs available to your account**:
+
+```bash
+stax list
+```
+
+**Expected output**:
+```
+Listing WPEngine Installs
+
+INSTALL NAME           ENVIRONMENT   PRIMARY DOMAIN              PHP   STATUS
+myinstall              production    mysite.wpengine.com         8.1   active
+myinstall-staging      staging       myinstall-staging.wpe       8.1   active
+client-site-prod       production    clientsite.com              8.2   active
+client-site-staging    staging       clientsite-staging.wpe      8.2   active
+
+Total: 4 installs
+```
+
+This shows:
+- **Install Name**: The identifier you'll use in `stax init`
+- **Environment**: Whether it's production or staging
+- **Primary Domain**: The main domain for this install
+- **PHP**: PHP version running on WPEngine
+- **Status**: Usually "active"
+
+### Filtering Installs
+
+**Filter by name using regex**:
+```bash
+# Find all client installs
+stax list --filter="client.*"
+
+# Find production installs only
+stax list --filter=".*-prod"
+
+# Find installs starting with "fs"
+stax list --filter="^fs-"
+```
+
+**Filter by environment**:
+```bash
+# Show only production installs
+stax list --environment=production
+
+# Show only staging installs
+stax list --environment=staging
+```
+
+**Combine filters**:
+```bash
+# Client staging installs only
+stax list --filter="client.*" --environment=staging
+```
+
+### Different Output Formats
+
+**JSON output** (for scripting):
+```bash
+stax list --output=json
+```
+
+**YAML output**:
+```bash
+stax list --output=yaml
+```
+
+**Table output** (default, human-readable):
+```bash
+stax list --output=table
+# or just:
+stax list
+```
+
+### Common Use Cases
+
+**Onboarding a new team member**:
+```bash
+# List all installs to find the one you need
+stax list
+
+# Found it! Now initialize
+stax init
+# Enter "myinstall" when prompted for install name
+```
+
+**Finding the staging environment**:
+```bash
+# List staging installs only
+stax list --environment=staging
+
+# Use the install name in your project
+stax config set wpengine.install myinstall-staging
+```
+
+**Auditing available installs**:
+```bash
+# Get complete list in JSON
+stax list --output=json > wpengine-installs.json
+
+# Process with jq
+stax list --output=json | jq '.[] | select(.environment == "production")'
+```
+
+### Troubleshooting List Command
+
+**"WPEngine credentials not found"**:
+```bash
+# Configure your credentials first
+stax setup
+```
+
+**"Authentication failed"**:
+- Check your WPEngine API credentials
+- Verify you have the correct username/password
+- Try `stax setup` to reconfigure
+
+**"No installs found"**:
+- Verify your WPEngine account has install access
+- Check if your API user has the correct permissions
+- Contact WPEngine support if needed
+
+**Notes**:
+- This command doesn't require a stax.yml file
+- No SSH key needed (API only)
+- Fast operation (typically <5 seconds)
+- Safe to run anytime - read-only operation
 
 ### What You'll Learn
 

@@ -8,6 +8,7 @@ Common problems and their solutions.
 
 - [Getting Help](#getting-help)
 - [Installation Issues](#installation-issues)
+- [List Command Issues](#list-command-issues)
 - [Database Problems](#database-problems)
 - [DDEV and Container Issues](#ddev-and-container-issues)
 - [Network and Connectivity](#network-and-connectivity)
@@ -201,6 +202,193 @@ mkcert -install
 # For Firefox support
 brew install nss
 ```
+
+---
+
+## List Command Issues
+
+### "WPEngine credentials not found"
+
+**Symptom**:
+```
+Error: WPEngine credentials not found
+
+Please configure your credentials using one of these methods:
+...
+```
+
+**Solution**:
+```bash
+# Configure credentials
+stax setup
+
+# Or set environment variables
+export WPENGINE_API_USER="your-username"
+export WPENGINE_API_PASSWORD="your-password"
+
+# Or create credentials file
+mkdir -p ~/.stax
+cat > ~/.stax/credentials.yml <<EOF
+wpengine:
+  api_user: your-username
+  api_password: your-password
+EOF
+```
+
+### "Authentication failed"
+
+**Symptom**:
+```
+Error: authentication failed: invalid credentials
+```
+
+**Causes and solutions**:
+
+**1. Wrong API credentials**:
+```bash
+# Reconfigure with correct credentials
+stax setup
+
+# Verify credentials in WPEngine portal
+# Go to: Account Settings > API Access
+```
+
+**2. API access not enabled**:
+- Log in to WPEngine portal
+- Go to Account Settings > API Access
+- Enable API access
+- Create new API credentials if needed
+
+**3. Incorrect username format**:
+```bash
+# Should be your email or API username
+# NOT your WPEngine login username
+stax setup
+# Enter: yourname@company.com (not just "yourname")
+```
+
+### "Connection test failed"
+
+**Symptom**:
+```
+Error: connection test failed: timeout
+```
+
+**Solutions**:
+
+**1. Network issue**:
+```bash
+# Check internet connection
+ping api.wpengine.com
+
+# Check if behind VPN/proxy
+# Try without VPN
+```
+
+**2. Firewall blocking**:
+```bash
+# Check if firewall allows outbound HTTPS
+curl -I https://api.wpengine.com
+```
+
+**3. WPEngine API down**:
+```bash
+# Check WPEngine status page
+# https://status.wpengine.com
+```
+
+### "No installs found"
+
+**Symptom**:
+```
+No installs found matching your criteria
+
+Tips:
+  - Check your filter/environment flags
+  - Verify your WPEngine account has install access
+  - Run without filters: stax list
+```
+
+**Causes and solutions**:
+
+**1. Filters too restrictive**:
+```bash
+# Remove filters
+stax list
+
+# Check filter syntax
+stax list --filter=".*"  # Should match all
+
+# Try simpler filter
+stax list --filter="myinstall"
+```
+
+**2. No installs in account**:
+- Verify you have access to WPEngine installs
+- Check with WPEngine account admin
+- Ensure API user has correct permissions
+
+**3. Wrong API credentials**:
+```bash
+# Verify credentials
+stax setup
+```
+
+### List command is slow
+
+**Symptom**: `stax list` takes more than 10 seconds.
+
+**Causes and solutions**:
+
+**1. Many installs**:
+```bash
+# Filter to reduce results
+stax list --filter="client.*"
+stax list --environment=production
+```
+
+**2. Network latency**:
+```bash
+# Check network speed
+curl -w "@-" -o /dev/null -s https://api.wpengine.com <<EOF
+    time_namelookup:  %{time_namelookup}\n
+       time_connect:  %{time_connect}\n
+    time_appconnect:  %{time_appconnect}\n
+      time_redirect:  %{time_redirect}\n
+   time_starttransfer:  %{time_starttransfer}\n
+                      ----------\n
+          time_total:  %{time_total}\n
+EOF
+```
+
+**3. API rate limiting**:
+- Wait a few minutes and try again
+- WPEngine may be rate limiting your requests
+
+### Output format issues
+
+**JSON output malformed**:
+```bash
+# Ensure no other output is mixed in
+stax list --output=json 2>/dev/null
+
+# Validate JSON
+stax list --output=json | jq .
+```
+
+**YAML output not parsing**:
+```bash
+# Ensure no other output
+stax list --output=yaml 2>/dev/null
+
+# Validate YAML
+stax list --output=yaml | yq .
+```
+
+**Table format misaligned**:
+- This is usually due to very long domain names
+- Use JSON or YAML for machine-readable output
+- Filter to reduce results: `stax list --filter="short-name"`
 
 ---
 

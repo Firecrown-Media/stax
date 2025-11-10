@@ -21,7 +21,7 @@ If all checks pass, you're ready to go!
 
 ---
 
-## Your First Project in 5 Steps
+## Your First Project in 6 Steps
 
 ### Step 1: Configure Your Credentials (One-Time Setup)
 
@@ -72,7 +72,34 @@ cd ~/Sites/my-multisite
 
 You can use any directory you prefer. Stax works wherever you are.
 
-### Step 3: Initialize Your Project
+### Step 3: Discover Your WPEngine Install (Optional)
+
+If you don't know your WPEngine install name, use the list command to find it:
+
+```bash
+stax list
+```
+
+**Expected output**:
+```
+Listing WPEngine Installs
+
+INSTALL NAME           ENVIRONMENT   PRIMARY DOMAIN              PHP   STATUS
+myinstall              production    mysite.wpengine.com         8.1   active
+myinstall-staging      staging       myinstall-staging.wpe       8.1   active
+client-site            production    clientsite.com              8.2   active
+
+Total: 3 installs
+```
+
+**Tips**:
+- The "Install Name" column shows what you'll enter during `stax init`
+- Use `--filter` to narrow down results: `stax list --filter="client.*"`
+- Use `--environment` to see only production or staging: `stax list --environment=production`
+
+**Skip this step if you already know your install name**.
+
+### Step 4: Initialize Your Project
 
 ```bash
 stax init
@@ -104,7 +131,7 @@ This will be your main network URL. Stax automatically configures SSL for `https
 ```
 ? WPEngine install name: myinstall
 ```
-Find this in your WPEngine portal under "Sites".
+Use the install name you found with `stax list` (from Step 3), or find it in your WPEngine portal under "Sites".
 
 **Environment**: (production or staging)
 ```
@@ -207,7 +234,7 @@ WordPress Admin:
   Users:    Your production users (unchanged)
 ```
 
-### Step 4: Access Your Site
+### Step 5: Access Your Site
 
 Open your browser and go to:
 - **Network**: https://my-multisite.local
@@ -223,7 +250,7 @@ Username: (your production admin username)
 Password: (your production admin password)
 ```
 
-### Step 5: Start Developing
+### Step 6: Start Developing
 
 Your environment is now running! Here are some commands to try:
 
