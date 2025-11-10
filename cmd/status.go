@@ -16,7 +16,7 @@ var (
 // statusCmd represents the status command
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Show environment status",
+	Short: "✓ Show environment status",
 	Long: `Show detailed status information about the DDEV environment,
 including container health, URLs, configuration, database info, and more.`,
 	Aliases: []string{"s"},

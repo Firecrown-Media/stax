@@ -16,7 +16,7 @@ var (
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop the DDEV environment",
+	Short: "✓ Stop the DDEV environment",
 	Long: `Stop the DDEV environment for the current project.
 
 This command stops all DDEV containers while preserving data.

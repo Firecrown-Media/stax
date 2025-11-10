@@ -16,7 +16,7 @@ var (
 // restartCmd represents the restart command
 var restartCmd = &cobra.Command{
 	Use:   "restart",
-	Short: "Restart the DDEV environment",
+	Short: "✓ Restart the DDEV environment",
 	Long: `Restart the DDEV environment (stop followed by start).
 
 This is equivalent to running 'stax stop' followed by 'stax start',

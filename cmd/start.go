@@ -21,7 +21,7 @@ var (
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the DDEV environment",
+	Short: "✓ Start the DDEV environment",
 	Long: `Start the DDEV environment for the current project.
 
 This command starts all DDEV containers (web, database, router) and
