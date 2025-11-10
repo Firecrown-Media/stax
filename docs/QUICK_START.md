@@ -1,6 +1,6 @@
 # Stax Quick Start Guide
 
-Get your first WordPress multisite project up and running in 5 minutes or less.
+Get your first WordPress project up and running in 5 minutes or less.
 
 ---
 
@@ -66,8 +66,8 @@ Credentials saved successfully!
 
 ```bash
 # Create a directory for your project
-mkdir -p ~/Sites/my-multisite
-cd ~/Sites/my-multisite
+mkdir -p ~/Sites/my-project
+cd ~/Sites/my-project
 ```
 
 You can use any directory you prefer. Stax works wherever you are.
@@ -109,8 +109,19 @@ Stax will now guide you through an interactive setup. Here's what you'll be aske
 
 **Project name**: (defaults to directory name)
 ```
-? Project name: my-multisite
+? Project name: my-project
 ```
+
+**Project type**: (wordpress or wordpress-multisite)
+```
+? Project type:
+  ❯ wordpress (single site)
+    wordpress-multisite
+```
+Choose `wordpress` for a standard single-site installation (most common).
+Choose `wordpress-multisite` if you're working with a multisite network.
+
+**For multisite projects only:**
 
 **Multisite mode**: (subdomain or subdirectory)
 ```
@@ -121,11 +132,11 @@ Stax will now guide you through an interactive setup. Here's what you'll be aske
 Choose `subdomain` if your production site uses subdomains (e.g., site1.example.com).
 Choose `subdirectory` if it uses paths (e.g., example.com/site1).
 
-**Network domain**: (your local domain)
+**Domain**: (your local domain)
 ```
-? Network domain: my-multisite.local
+? Domain: my-project.local
 ```
-This will be your main network URL. Stax automatically configures SSL for `https://`.
+This will be your local development URL. Stax automatically configures SSL for `https://`.
 
 **WPEngine install name**: (your WPEngine install)
 ```

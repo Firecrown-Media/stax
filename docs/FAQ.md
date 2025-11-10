@@ -8,21 +8,20 @@ Common questions and answers about Stax.
 
 ### What is Stax?
 
-Stax is a command-line tool that automates WordPress multisite development. It replaces LocalWP for teams that need automated setup, WPEngine integration, and consistent team environments.
+Stax is a command-line tool that automates WordPress development for both single sites and multisite networks. It replaces LocalWP for teams that need automated setup, WPEngine integration, and consistent team environments.
 
 Think of it as: LocalWP + automation + team collaboration + hosting integration.
 
 ### Who should use Stax?
 
 **Stax is perfect for**:
-- WordPress developers working with multisite
+- WordPress developers (single site or multisite)
 - Teams using WPEngine hosting
 - Anyone who wants automated, consistent local development
 - Developers comfortable with command-line tools
 
 **Stax might not be for you if**:
 - You prefer GUI tools over command-line
-- You work with single-site WordPress (though it still works)
 - You're not using macOS (Windows/Linux not supported yet)
 
 ### How is Stax different from LocalWP?
@@ -40,13 +39,30 @@ Think of it as: LocalWP + automation + team collaboration + hosting integration.
 
 **Bottom line**: Stax is faster, more automated, and better for teams.
 
+### Can I use Stax for single-site WordPress?
+
+**Absolutely!** Stax works great for standard single-site WordPress installations. In fact, the default project type is now `wordpress` (single site) rather than `wordpress-multisite`.
+
+All core features work perfectly for single sites:
+- Automatic database sync from WPEngine
+- Remote media proxying
+- Database snapshots and restore
+- Build automation
+- Team-friendly configuration
+
+**When to use single site vs. multisite:**
+- **Use single site** for most WordPress projects (blogs, client sites, marketing sites, etc.)
+- **Use multisite** only when you need multiple sites sharing code and database
+
+If you're not sure whether you need multisite, you probably don't. Most WordPress projects are single sites.
+
 ### How is Stax different from wp-env or other tools?
 
 **vs wp-env** (WordPress's official tool):
-- Stax is specialized for multisite
+- Stax supports both single sites and multisite networks
 - Stax has WPEngine integration
 - Stax has more features (snapshots, builds, linting)
-- wp-env is simpler for basic single-site development
+- wp-env is simpler for basic development
 
 **vs DDEV directly**:
 - Stax adds WordPress-specific features on top of DDEV
