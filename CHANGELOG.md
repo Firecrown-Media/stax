@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/Firecrown-Media/stax/compare/v0.5.0...v1.0.0) (2025-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* Default project type changed from wordpress-multisite to wordpress
+
+### Documentation
+
+* clarify single site and multisite support ([3a2414b](https://github.com/Firecrown-Media/stax/commit/3a2414b294503ebb852d76d7edc380ddf6a78db3))
+
 ## [0.5.0](https://github.com/Firecrown-Media/stax/compare/v0.4.2...v0.5.0) (2025-11-10)
 
 
