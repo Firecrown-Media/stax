@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Firecrown-Media/stax/compare/v0.4.2...v0.5.0) (2025-11-10)
+
+
+### Features
+
+* **list:** add global list command for WPEngine installs ([#30](https://github.com/Firecrown-Media/stax/issues/30)) ([45f73c2](https://github.com/Firecrown-Media/stax/commit/45f73c224feb70037f91fc74a5f34a9099c14bfd))
+
 ## [0.4.2](https://github.com/Firecrown-Media/stax/compare/v0.4.1...v0.4.2) (2025-11-10)
 
 
