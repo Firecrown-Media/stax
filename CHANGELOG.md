@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/Firecrown-Media/stax/compare/v1.0.0...v1.1.0) (2025-11-10)
+
+
+### Features
+
+* Enhanced error messaging and UX improvements ([#34](https://github.com/Firecrown-Media/stax/issues/34)) ([84ef266](https://github.com/Firecrown-Media/stax/commit/84ef2662d90c9dc62ce67408634dacdd60300c68))
+
 ## [1.0.0](https://github.com/Firecrown-Media/stax/compare/v0.5.0...v1.0.0) (2025-11-10)
 
 
