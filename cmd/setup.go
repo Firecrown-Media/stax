@@ -16,6 +16,7 @@ var (
 	setupGitHubToken      string
 	setupSSHKey           string
 	setupInteractive      bool
+	setupCheck            bool
 )
 
 // setupCmd represents the setup command
@@ -46,9 +47,15 @@ func init() {
 	setupCmd.Flags().StringVar(&setupGitHubToken, "github-token", "", "GitHub personal access token")
 	setupCmd.Flags().StringVar(&setupSSHKey, "ssh-key", "", "Path to SSH private key for WPEngine")
 	setupCmd.Flags().BoolVar(&setupInteractive, "interactive", true, "Interactive credential setup")
+	setupCmd.Flags().BoolVar(&setupCheck, "check", false, "Check credential status and configuration")
 }
 
 func runSetup(cmd *cobra.Command, args []string) error {
+	// Handle --check flag
+	if setupCheck {
+		return runSetupCheck()
+	}
+
 	ui.PrintHeader("Setting up Stax Credentials")
 
 	// Check if keychain is available
@@ -184,4 +191,60 @@ func expandPath(path string) string {
 		}
 	}
 	return path
+}
+
+// runSetupCheck runs credential diagnostics
+func runSetupCheck() error {
+	ui.PrintHeader("Checking Credential Configuration")
+
+	// Run diagnostics
+	diag := credentials.RunDiagnostics()
+
+	// Display results
+	displayDiagnosticResult(diag.KeychainAvailable)
+	displayDiagnosticResult(diag.WPEngineAPI)
+	displayDiagnosticResult(diag.WPEngineSSH)
+	displayDiagnosticResult(diag.GitHubToken)
+	displayDiagnosticResult(diag.CredentialsFile)
+	displayDiagnosticResult(diag.EnvironmentVars)
+	displayDiagnosticResult(diag.SSHKeyFile)
+
+	// Display overall status
+	ui.Section("\nOverall Status")
+	switch diag.OverallStatus {
+	case "ok":
+		ui.Success("All checks passed")
+	case "warning":
+		ui.Warning("Some warnings found")
+	case "error":
+		ui.Error("Critical issues found")
+	}
+
+	// Display recommendations
+	if len(diag.RecommendedActions) > 0 {
+		ui.Section("\nRecommended Actions")
+		for _, action := range diag.RecommendedActions {
+			ui.Info(fmt.Sprintf("- %s", action))
+		}
+	}
+
+	return nil
+}
+
+// displayDiagnosticResult displays a single diagnostic result
+func displayDiagnosticResult(result credentials.DiagnosticResult) {
+	ui.Section(fmt.Sprintf("\n%s", result.Name))
+
+	switch result.Status {
+	case "ok":
+		ui.Success(result.Message)
+	case "warning":
+		ui.Warning(result.Message)
+	case "error":
+		ui.Error(result.Message)
+	}
+
+	for _, detail := range result.Details {
+		ui.Info(fmt.Sprintf("  %s", detail))
+	}
 }

@@ -70,12 +70,25 @@ var configValidateCmd = &cobra.Command{
 	RunE: runConfigValidate,
 }
 
+// configTemplateCmd represents the config:template command
+var configTemplateCmd = &cobra.Command{
+	Use:   "template",
+	Short: "Generate a configuration template",
+	Example: `  # Generate template to stdout
+  stax config template
+
+  # Generate template to file
+  stax config template > .stax.yml`,
+	RunE: runConfigTemplate,
+}
+
 func init() {
 	rootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(configGetCmd)
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configListCmd)
 	configCmd.AddCommand(configValidateCmd)
+	configCmd.AddCommand(configTemplateCmd)
 
 	// Flags for get
 	configGetCmd.Flags().BoolVar(&configGlobal, "global", false, "get from global config")
@@ -128,14 +141,183 @@ func runConfigList(cmd *cobra.Command, args []string) error {
 }
 
 func runConfigValidate(cmd *cobra.Command, args []string) error {
-	// TODO: Load config from file
-	// TODO: Validate against schema
-	// TODO: Display validation results
-
 	ui.PrintHeader("Validating Configuration")
-	ui.Info("Config validation is not yet implemented")
 
-	ui.Success("Configuration is valid")
+	// Load config from current directory
+	cfg := getConfig()
+	if cfg == nil {
+		return fmt.Errorf("no configuration found - run 'stax config template' to create one")
+	}
 
+	ui.Info("Validating .stax.yml configuration...")
+
+	// Basic validation checks
+	errors := []string{}
+	warnings := []string{}
+
+	// Check required fields
+	if cfg.Project.Name == "" {
+		errors = append(errors, "project.name is required")
+	}
+	if cfg.Project.Type == "" {
+		errors = append(errors, "project.type is required (wordpress or wordpress-multisite)")
+	}
+	if cfg.WPEngine.Install == "" {
+		errors = append(errors, "wpengine.install is required")
+	}
+
+	// Check optional but recommended fields
+	if cfg.Network.Domain == "" {
+		warnings = append(warnings, "network.domain not set - recommended for multisite")
+	}
+
+	// Display results
+	if len(errors) > 0 {
+		ui.Error("Validation failed:")
+		for _, err := range errors {
+			ui.Info(fmt.Sprintf("  - %s", err))
+		}
+		return fmt.Errorf("configuration has %d error(s)", len(errors))
+	}
+
+	if len(warnings) > 0 {
+		ui.Warning("Validation warnings:")
+		for _, warn := range warnings {
+			ui.Info(fmt.Sprintf("  - %s", warn))
+		}
+	}
+
+	ui.Success("Configuration is valid!")
+	return nil
+}
+
+func runConfigTemplate(cmd *cobra.Command, args []string) error {
+	// Generate a template .stax.yml configuration
+	template := `# Stax Configuration
+# Version: 1
+
+version: 1
+
+# Project metadata
+project:
+  name: my-wordpress-project
+  type: wordpress-multisite  # wordpress or wordpress-multisite
+  mode: subdomain            # subdomain, subdirectory, or single
+  description: My WordPress Multisite Project
+
+# WPEngine integration
+wpengine:
+  install: myinstall           # WPEngine install name
+  environment: production      # production, staging, or development
+  account_name: myaccount      # WPEngine account name (optional)
+  ssh_gateway: ssh.wpengine.net
+
+  # Backup preferences
+  backup:
+    auto_snapshot: true        # Create snapshot before DB pull
+    skip_logs: true           # Skip log tables
+    skip_transients: true     # Skip transient data
+    skip_spam: true           # Skip spam comments
+    exclude_tables: []        # Additional tables to exclude
+
+  # Domain mapping (optional)
+  domains:
+    production:
+      primary: example.com
+      sites:
+        - site1.example.com
+        - site2.example.com
+    staging:
+      primary: staging.example.com
+
+# Network configuration (for multisite)
+network:
+  domain: example.local      # Local development domain
+  title: My Network         # Network title
+  admin_email: admin@example.local
+
+  # Individual sites (optional - can be auto-detected)
+  sites:
+    - name: Main Site
+      slug: main
+      title: Main Site
+      domain: example.local
+      path: /
+    - name: Site One
+      slug: site1
+      title: Site One
+      domain: site1.example.local
+      path: /
+
+# DDEV configuration
+ddev:
+  name: ""                  # Auto-generated from project name
+  type: wordpress
+  php_version: "8.1"
+  mysql_version: "8.0"
+  webserver_type: nginx-fpm
+  router_http_port: "80"
+  router_https_port: "443"
+  xdebug_enabled: false
+  additional_hostnames: []
+  additional_fqdns: []
+
+# GitHub repository (optional)
+repository:
+  url: https://github.com/username/repo.git
+  branch: main
+  private: true
+
+# Build process (optional)
+build:
+  enabled: true
+  composer:
+    enabled: true
+    install_args: "--no-dev --optimize-autoloader"
+  npm:
+    enabled: true
+    install_command: npm ci
+    build_command: npm run build
+    dev_command: npm run dev
+    watch_command: npm run watch
+  quality:
+    phpcs: true
+    phpcbf: true
+
+# WordPress configuration (optional)
+wordpress:
+  version: latest
+  locale: en_US
+  timezone: America/New_York
+  debug: true
+  debug_log: true
+
+# Remote media configuration
+media:
+  enabled: true
+  strategy: bunnycdn         # bunnycdn, wpengine, or disabled
+  cache_ttl: 2592000         # 30 days
+  cache_max_size: 10737418240  # 10GB
+
+# Logging and debugging (optional)
+logging:
+  level: info               # debug, info, warning, error
+  file: .stax/logs/stax.log
+  rotate: true
+
+# Snapshots (optional)
+snapshots:
+  directory: .stax/snapshots
+  retention_days: 30
+  auto_cleanup: true
+
+# Performance tuning (optional)
+performance:
+  db_import_chunk_size: 1048576  # 1MB
+  parallel_downloads: 4
+  connection_timeout: 30
+`
+
+	fmt.Println(template)
 	return nil
 }

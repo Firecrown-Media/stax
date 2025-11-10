@@ -23,7 +23,7 @@ var (
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize a new Stax project",
+	Short: "[construction] Initialize a new Stax project",
 	Long: `Initialize a new Stax project in the current directory.
 
 This command will:
@@ -80,23 +80,15 @@ func init() {
 func runInit(cmd *cobra.Command, args []string) error {
 	ui.PrintHeader("Initializing Stax Project")
 
-	// TODO: Implement interactive prompts if initInteractive is true
-	// TODO: Validate WPEngine credentials
-	// TODO: Clone repository if specified
-	// TODO: Detect PHP/MySQL versions from WPEngine
-	// TODO: Generate DDEV configuration
-	// TODO: Start DDEV containers
-	// TODO: Install dependencies (composer, npm)
-	// TODO: Run build process if not skipped
-	// TODO: Pull database from WPEngine if not skipped
-	// TODO: Import database
-	// TODO: Run search-replace operations
-	// TODO: Display success message with site URLs
-
-	ui.Info("Project initialization is not yet implemented")
-	ui.Info("This is a placeholder for the full implementation")
-
-	ui.Success("Initialization placeholder completed!")
+	ui.Warning("[construction] This command is not yet fully implemented")
+	ui.Info("")
+	ui.Info("To set up your project manually:")
+	ui.Info("1. Clone your repository to the current directory")
+	ui.Info("2. Run 'ddev config --project-type=wordpress'")
+	ui.Info("3. Run 'ddev start'")
+	ui.Info("4. Run 'stax db pull' to sync your database")
+	ui.Info("")
+	ui.Info("The interactive init workflow is coming soon!")
 
 	return nil
 }

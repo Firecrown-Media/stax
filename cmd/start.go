@@ -13,7 +13,7 @@ var (
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the DDEV environment",
+	Short: "[warning] Start the DDEV environment",
 	Long: `Start the DDEV environment for the current project.
 
 This command starts all DDEV containers (web, database, router) and
@@ -40,17 +40,21 @@ func init() {
 func runStart(cmd *cobra.Command, args []string) error {
 	ui.PrintHeader("Starting Environment")
 
-	// TODO: Check if DDEV is installed
-	// TODO: Check if .ddev/config.yaml exists
-	// TODO: Run ddev start
-	// TODO: Enable Xdebug if requested
-	// TODO: Run build process if requested
-	// TODO: Display environment URLs
+	ui.Warning("[warning] Using DDEV directly (stax wrapper coming soon)")
+	ui.Info("")
+	ui.Info("For now, use DDEV commands directly:")
+	ui.Info("  ddev start")
 
-	ui.Info("Environment start is not yet implemented")
-	ui.Info("This is a placeholder for DDEV integration")
+	if startXdebug {
+		ui.Info("  ddev xdebug on")
+	}
 
-	ui.Success("Environment start placeholder completed!")
+	if startBuild {
+		ui.Info("  npm run build")
+	}
+
+	ui.Info("")
+	ui.Info("Future stax start will integrate these steps automatically.")
 
 	return nil
 }

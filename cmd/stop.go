@@ -13,7 +13,7 @@ var (
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop the DDEV environment",
+	Short: "[warning] Stop the DDEV environment",
 	Long: `Stop the DDEV environment for the current project.
 
 This command stops all DDEV containers while preserving data.
@@ -37,13 +37,23 @@ func init() {
 func runStop(cmd *cobra.Command, args []string) error {
 	ui.PrintHeader("Stopping Environment")
 
-	// TODO: Run ddev stop or ddev poweroff (if --all)
-	// TODO: Optionally remove data if requested
+	ui.Warning("[warning] Using DDEV directly (stax wrapper coming soon)")
+	ui.Info("")
+	ui.Info("For now, use DDEV commands directly:")
 
-	ui.Info("Environment stop is not yet implemented")
-	ui.Info("This is a placeholder for DDEV integration")
+	if stopAll {
+		ui.Info("  ddev poweroff")
+	} else {
+		ui.Info("  ddev stop")
+	}
 
-	ui.Success("Environment stopped!")
+	if stopRemoveData {
+		ui.Warning("  ddev delete --omit-snapshot")
+		ui.Warning("  WARNING: This will permanently delete your database!")
+	}
+
+	ui.Info("")
+	ui.Info("Future stax stop will integrate these steps automatically.")
 
 	return nil
 }
