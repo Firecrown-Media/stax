@@ -51,6 +51,17 @@ func init() {
 func runSetup(cmd *cobra.Command, args []string) error {
 	ui.PrintHeader("Setting up Stax Credentials")
 
+	// Check if keychain is available
+	if !credentials.IsKeychainAvailable() {
+		ui.Warning("macOS Keychain storage is not available in this build")
+		ui.Info("This is normal for Homebrew installations (built with CGO_ENABLED=0)")
+		fmt.Println()
+
+		// Show instructions
+		fmt.Println(credentials.GetCredentialsStorageInstructions())
+		return nil
+	}
+
 	// Get credentials interactively if not provided
 	if setupInteractive {
 		if setupWPEngineUser == "" {

@@ -415,9 +415,85 @@ If you're working with private repositories, you'll need a GitHub personal acces
 6. Click "Generate token"
 7. **Copy the token immediately** (you won't see it again)
 
-### 3. Run Stax Setup
+### 3. Configure Credentials
 
-Now configure Stax with your credentials:
+Stax supports multiple ways to store credentials, depending on how you installed it.
+
+#### Credential Storage Methods
+
+**Homebrew Installations** (CGO_ENABLED=0):
+- Homebrew builds cannot use macOS Keychain
+- Use Environment Variables (recommended for CI/CD)
+- Use Config File (recommended for development)
+
+**Source Builds with CGO** (CGO_ENABLED=1):
+- Can use macOS Keychain for maximum security
+- Run `stax setup` to store credentials interactively
+
+#### Option 1: Environment Variables (Recommended for CI/CD)
+
+Add these to your shell profile (`~/.zshrc` or `~/.bashrc`):
+
+```bash
+export WPENGINE_API_USER="your-api-username"
+export WPENGINE_API_PASSWORD="your-api-password"
+export WPENGINE_SSH_GATEWAY="ssh.wpengine.net"
+export GITHUB_TOKEN="ghp_your_token_here"
+```
+
+Then reload your shell:
+```bash
+source ~/.zshrc
+```
+
+**Pros**:
+- Works everywhere (CI/CD, Docker, scripts)
+- Easy to update
+- No files to manage
+
+**Cons**:
+- Visible in shell history and process lists
+- Less secure than Keychain
+
+#### Option 2: Config File (Recommended for Development)
+
+Create `~/.stax/credentials.yml`:
+
+```yaml
+wpengine:
+  api_user: "your-api-username"
+  api_password: "your-api-password"
+  ssh_gateway: "ssh.wpengine.net"
+
+github:
+  token: "ghp_your_token_here"
+
+ssh:
+  private_key_path: "~/.ssh/wpengine"
+```
+
+Secure the file:
+```bash
+chmod 600 ~/.stax/credentials.yml
+```
+
+**Pros**:
+- Easy to manage
+- Works with Homebrew installations
+- Single file with all credentials
+
+**Cons**:
+- Plain text on disk
+- Must be careful not to commit to git
+
+**Important**: Add to your `.gitignore`:
+```bash
+echo "~/.stax/credentials.yml" >> ~/.gitignore
+```
+
+#### Option 3: macOS Keychain (Source Builds Only)
+
+If you built Stax from source with CGO enabled, you can use the Keychain:
 
 ```bash
 stax setup
@@ -445,8 +521,35 @@ Credentials saved successfully!
 
 All credentials are stored securely in macOS Keychain. They're never saved in plain text.
 
-**Updating credentials later**:
-Just run `stax setup` again to update any credential.
+**Pros**:
+- Maximum security
+- Encrypted by macOS
+- Integration with system security
+
+**Cons**:
+- Only works with CGO-enabled builds
+- Not available in Homebrew installations
+- Harder to use in CI/CD
+
+#### Checking Your Setup
+
+Run `stax setup` to see which storage method is available:
+
+**Homebrew installations** will show:
+```
+⚠ macOS Keychain storage is not available in this build
+  This is normal for Homebrew installations (built with CGO_ENABLED=0)
+
+[Instructions for environment variables or config file]
+```
+
+**CGO-enabled builds** will prompt for credentials interactively.
+
+#### Updating Credentials
+
+**Environment Variables**: Edit your shell profile and reload
+**Config File**: Edit `~/.stax/credentials.yml`
+**Keychain**: Run `stax setup` again
 
 ---
 

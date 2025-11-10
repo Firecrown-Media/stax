@@ -907,6 +907,82 @@ du -sh ~/.stax/snapshots/*
 
 ## WPEngine Integration
 
+### "Keychain storage not available" error
+
+**Symptom**:
+```
+⚠ macOS Keychain storage is not available in this build
+Error: keychain storage is not supported - please use environment variables or config files
+```
+
+**Explanation**:
+This is normal for Homebrew installations. Homebrew builds use `CGO_ENABLED=0` for better compatibility and can't access macOS Keychain APIs.
+
+**Solutions**:
+
+**Option 1: Use Environment Variables** (Recommended for CI/CD):
+
+Add to your `~/.zshrc` or `~/.bashrc`:
+```bash
+export WPENGINE_API_USER="your-api-username"
+export WPENGINE_API_PASSWORD="your-api-password"
+export WPENGINE_SSH_GATEWAY="ssh.wpengine.net"
+export GITHUB_TOKEN="ghp_your_token_here"
+```
+
+Reload your shell:
+```bash
+source ~/.zshrc
+```
+
+**Option 2: Use Config File** (Recommended for Development):
+
+Create `~/.stax/credentials.yml`:
+```yaml
+wpengine:
+  api_user: "your-api-username"
+  api_password: "your-api-password"
+  ssh_gateway: "ssh.wpengine.net"
+
+github:
+  token: "ghp_your_token_here"
+
+ssh:
+  private_key_path: "~/.ssh/wpengine"
+```
+
+Secure the file:
+```bash
+chmod 600 ~/.stax/credentials.yml
+```
+
+**Option 3: Build from Source with CGO**:
+
+If you need Keychain support:
+```bash
+# Clone the repository
+git clone https://github.com/firecrown-media/stax.git
+cd stax
+
+# Build with CGO enabled
+CGO_ENABLED=1 go build -o stax .
+
+# Install
+sudo mv stax /usr/local/bin/
+
+# Now stax setup will work with Keychain
+stax setup
+```
+
+**Verify your setup**:
+```bash
+# Check if credentials are loaded
+stax doctor
+
+# Test WPEngine connection
+ssh -i ~/.ssh/wpengine git@git.wpengine.com info
+```
+
 ### WPEngine authentication fails
 
 **Symptom**:
