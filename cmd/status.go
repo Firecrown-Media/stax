@@ -12,7 +12,7 @@ var (
 // statusCmd represents the status command
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Show environment status",
+	Short: "[warning] Show environment status",
 	Long: `Show detailed status information about the DDEV environment,
 including container health, URLs, configuration, database info, and
 WPEngine sync status.`,
@@ -34,17 +34,17 @@ func init() {
 func runStatus(cmd *cobra.Command, args []string) error {
 	ui.PrintHeader("Environment Status")
 
-	// TODO: Get DDEV status
-	// TODO: Get container health
-	// TODO: Get URLs from config
-	// TODO: Get database info
-	// TODO: Get WPEngine sync info
-	// TODO: Format as JSON if requested
+	ui.Warning("[warning] Using DDEV directly (stax wrapper coming soon)")
+	ui.Info("")
+	ui.Info("For now, use DDEV commands directly:")
+	ui.Info("  ddev describe")
 
-	ui.Info("Environment status is not yet implemented")
-	ui.Info("This is a placeholder for DDEV integration")
+	if statusJSON {
+		ui.Info("  ddev describe --json")
+	}
 
-	ui.Section("Environment: Not Running")
+	ui.Info("")
+	ui.Info("Future stax status will provide additional WordPress-specific info.")
 
 	return nil
 }

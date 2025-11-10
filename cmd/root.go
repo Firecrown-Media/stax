@@ -99,7 +99,7 @@ Git Commit: %s
 Build Date: %s
 `, GitCommit, BuildDate))
 
-	// Customize usage template
+	// Customize usage template with status indicators
 	rootCmd.SetUsageTemplate(`Usage:{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
   {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
@@ -121,6 +121,11 @@ Global Flags:
 
 Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Status Indicators:
+  [checkmark] Fully implemented and tested
+  [warning] Partial implementation or workaround available
+  [construction] Placeholder - not yet implemented
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
 `)

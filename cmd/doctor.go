@@ -12,7 +12,7 @@ var (
 // doctorCmd represents the doctor command
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Diagnose and fix common issues",
+	Short: "[construction] Diagnose and fix common issues",
 	Long: `Run diagnostics to check for common issues with the Stax environment.
 
 This command checks:
@@ -42,32 +42,19 @@ func init() {
 func runDoctor(cmd *cobra.Command, args []string) error {
 	ui.PrintHeader("Running Diagnostics")
 
-	// TODO: Check DDEV installation
-	// TODO: Check Docker Desktop
-	// TODO: Check WPEngine credentials
-	// TODO: Check GitHub token
-	// TODO: Check port availability
-	// TODO: Check database connection
-	// TODO: Check SSL certificates
-	// TODO: Check WordPress core files
-	// TODO: Check version compatibility
-	// TODO: Display issues and suggestions
-	// TODO: Fix issues if --fix is set
-
-	ui.Info("Running system diagnostics...")
-
-	// Placeholder checks
-	ui.Success("DDEV installed")
-	ui.Warning("Docker Desktop not running")
-	ui.Error("Port 443 in use by Apache")
-
-	ui.Section("\nIssues found: 2 errors, 1 warning")
+	ui.Warning("[construction] Comprehensive diagnostics coming soon")
+	ui.Info("")
+	ui.Info("For now, manually check:")
+	ui.Info("  1. DDEV installed: ddev version")
+	ui.Info("  2. Docker running: docker ps")
+	ui.Info("  3. Credentials set: stax setup --check")
+	ui.Info("  4. Ports available: lsof -i :80 -i :443")
+	ui.Info("")
+	ui.Info("Future stax doctor will automate these checks and provide fixes.")
 
 	if doctorFix {
-		ui.Info("\nAttempting to fix issues...")
-		ui.Info("Automatic fixes are not yet implemented")
-	} else {
-		ui.Info("\nRun 'stax doctor --fix' to automatically fix issues")
+		ui.Info("")
+		ui.Warning("Automatic fixes not yet implemented")
 	}
 
 	return nil
