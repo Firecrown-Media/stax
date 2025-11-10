@@ -155,8 +155,8 @@ func checkGitHubToken() DiagnosticResult {
 		Name: "GitHub Token",
 	}
 
-	creds, err := GetGitHubCredentials()
-	if err != nil || creds == nil || creds.Token == "" {
+	token, err := GetGitHubToken("default")
+	if err != nil || token == "" {
 		result.Status = "warning"
 		result.Message = "GitHub token not configured"
 		result.Details = []string{
