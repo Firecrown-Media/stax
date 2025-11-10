@@ -44,9 +44,17 @@ Features:
   - Team-friendly configuration management`,
 	Version: Version,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Skip config loading for commands that don't need it
-		if cmd.Name() == "setup" || cmd.Name() == "version" || cmd.Name() == "completion" || cmd.Name() == "man" {
-			return nil
+		// Commands that don't require .stax.yml config
+		skipConfigCommands := []string{"setup", "version", "completion", "man", "list", "doctor", "init", "start", "stop", "restart", "status"}
+		for _, skipCmd := range skipConfigCommands {
+			if cmd.Name() == skipCmd {
+				// Still initialize UI
+				ui.SetVerbose(verbose)
+				ui.SetDebug(debug)
+				ui.SetQuiet(quiet)
+				ui.SetNoColor(noColor)
+				return nil
+			}
 		}
 
 		// Initialize UI based on flags
@@ -59,12 +67,7 @@ Features:
 		var err error
 		cfg, err = config.Load(cfgFile, projectDir)
 		if err != nil {
-			// Only fail if config is required (not for init command)
-			if cmd.Name() != "init" && cmd.Name() != "doctor" {
-				return fmt.Errorf("failed to load configuration: %w", err)
-			}
-			// For init and doctor, we can proceed without config
-			ui.Debug("Configuration not found, proceeding without it")
+			return fmt.Errorf("failed to load configuration: %w", err)
 		}
 
 		return nil
