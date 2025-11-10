@@ -6,6 +6,11 @@
 
 Stax automates your entire WordPress development workflow - from environment setup to database syncing - so you can focus on building great sites instead of wrestling with configuration.
 
+> **🎉 v2.0.0 Release - Complete Environment Management**
+> Stax now provides complete WordPress environment management without requiring DDEV knowledge!
+> New in v2.0.0: Fully functional `start`, `stop`, `restart`, `status`, and `doctor` commands.
+> See [CHANGELOG.md](./CHANGELOG.md) for full details.
+
 ---
 
 ## What is Stax?
@@ -169,12 +174,12 @@ stax start
 ## Common Commands
 
 ```bash
-# Environment Management
+# Environment Management (✓ Fully Implemented in v2.0.0)
 stax start                    # Start your development environment
 stax stop                     # Stop your environment
 stax restart                  # Restart your environment
 stax status                   # Show environment status
-stax doctor                   # Diagnose issues
+stax doctor                   # Diagnose and fix issues
 
 # Database Operations
 stax db pull                  # Pull database from WPEngine
