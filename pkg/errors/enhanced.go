@@ -145,3 +145,15 @@ func NewEnhancedError(code, message, details string, solutions []Solution, docsU
 		Err:       err,
 	}
 }
+
+// NewWithSolution creates a simple error with a message, details, and one solution
+func NewWithSolution(message, details string, solution Solution) *EnhancedError {
+	return &EnhancedError{
+		Code:      "",
+		Message:   message,
+		Details:   details,
+		Solutions: []Solution{solution},
+		DocsURL:   "",
+		Err:       nil,
+	}
+}
