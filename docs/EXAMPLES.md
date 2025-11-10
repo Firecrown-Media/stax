@@ -2,6 +2,8 @@
 
 Practical examples for common workflows and scenarios.
 
+> **Note**: The examples below show multisite configurations for demonstration purposes, but all workflows work equally well for single-site WordPress projects. Simply use `type: wordpress` instead of `type: wordpress-multisite` in your `.stax.yml` configuration.
+
 ---
 
 ## Table of Contents

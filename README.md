@@ -1,28 +1,31 @@
 # Stax
 
-**A powerful CLI tool for WordPress multisite development with seamless hosting integration.**
+**A powerful CLI tool for WordPress development with seamless hosting integration.**
 
-Stax automates your entire WordPress multisite development workflow - from environment setup to database syncing - so you can focus on building great sites instead of wrestling with configuration.
+**Supports both single WordPress sites and multisite networks.**
+
+Stax automates your entire WordPress development workflow - from environment setup to database syncing - so you can focus on building great sites instead of wrestling with configuration.
 
 ---
 
 ## What is Stax?
 
-Stax is a command-line tool designed to make WordPress multisite development as simple as possible. Whether you're a junior developer getting started or a senior developer managing multiple projects, Stax handles the complex parts of local development automatically.
+Stax is a command-line tool designed to make WordPress development as simple as possible. Whether you're working with a single WordPress site or a complex multisite network, and whether you're a junior developer getting started or a senior developer managing multiple projects, Stax handles the complex parts of local development automatically.
 
 **In one command, Stax will:**
-- Set up a complete WordPress multisite environment
+- Set up a complete WordPress environment (single site or multisite)
 - Clone your codebase from GitHub
 - Pull your production database from WPEngine
-- Configure all your subsites with the correct local domains
-- Handle SSL certificates automatically
+- Configure SSL certificates automatically
+- For multisite: Configure all your subsites with the correct local domains
 - Start your development server
 
 ## Key Features
 
 - **One-Command Setup** - Go from zero to running WordPress in under 5 minutes
+- **Single Site & Multisite** - Full support for standard WordPress and multisite networks
 - **Automatic Database Sync** - Pull databases from WPEngine with automatic URL replacement
-- **Multisite Made Easy** - Full support for subdomain and subdirectory multisite
+- **Multisite Made Easy** - Full support for subdomain and subdirectory multisite (when needed)
 - **Remote Media Proxying** - Access production media without downloading gigabytes of files
 - **Safe Database Snapshots** - Create restore points before risky operations
 - **Team-Friendly** - Share configuration files via Git, everyone gets identical environments
@@ -39,25 +42,24 @@ stax setup
 cd ~/Sites/my-project
 stax init
 
-# Your WordPress multisite is now running at:
-# https://myproject.local
-# https://site1.myproject.local
-# https://site2.myproject.local
+# Your WordPress site is now running!
+# Single site: https://myproject.local
+# Multisite: https://myproject.local + subdomains/subdirectories
 ```
 
-That's it! You now have a fully configured WordPress multisite development environment.
+That's it! You now have a fully configured WordPress development environment.
 
 ## Who Should Use Stax?
 
 **Stax is perfect for:**
-- WordPress developers working with multisite
+- WordPress developers (single site or multisite)
 - Teams using WPEngine hosting
 - Developers who want consistent local environments
 - Anyone tired of manual database imports and search-replace
 - Teams transitioning from LocalWP to a more automated workflow
 
 **You should use Stax if you:**
-- Work with WordPress multisite (subdomain or subdirectory mode)
+- Work with WordPress (single sites or multisite networks)
 - Need to frequently sync databases from production/staging
 - Want identical development environments across your team
 - Prefer command-line tools over GUI applications
@@ -131,12 +133,13 @@ stax init
 
 Stax will interactively ask you:
 - Project name
-- Multisite mode (subdomain or subdirectory)
-- Network domain (e.g., `mysite.local`)
+- Project type (single site or multisite)
+- For multisite: Multisite mode (subdomain or subdirectory)
+- Domain (e.g., `mysite.local`)
 - WPEngine install name
 - Which environment to pull from (production/staging)
 - GitHub repository URL
-- Your brand sites and domains
+- For multisite: Your brand sites and domains
 
 ### 3. Start Developing
 
@@ -339,9 +342,32 @@ stax init
 
 **More examples:** [docs/EXAMPLES.md](./docs/EXAMPLES.md)
 
-## Multisite Support
+## Single Site Support
 
-Stax has first-class support for WordPress multisite in both modes:
+Stax works great with standard single-site WordPress installations:
+
+```yaml
+# .stax.yml
+project:
+  name: my-site
+  type: wordpress  # Single site
+
+wordpress:
+  domain: mysite.local
+```
+
+All the same features work for single sites:
+- Automatic database sync from WPEngine
+- Remote media proxying
+- Database snapshots and restore
+- Build automation
+- Team-friendly configuration
+
+**Perfect for:** Most WordPress projects, client sites, blogs, marketing sites, or any standard WordPress installation.
+
+## Multisite Support (Optional)
+
+Need multisite? Stax has first-class support for WordPress multisite networks in both modes:
 
 ### Subdomain Multisite
 
@@ -464,7 +490,7 @@ A: Currently Stax is macOS-only. Windows and Linux support may come in the futur
 A: Stax has built-in WPEngine support, but you can use it as a local development tool with any hosting provider. Database sync would be manual.
 
 **Q: How is this different from wp-env or other tools?**
-A: Stax is specifically designed for WordPress multisite with hosting integration. It's more opinionated and automated than general-purpose tools.
+A: Stax is specifically designed for WordPress development (both single sites and multisite) with hosting integration. It's more opinionated and automated than general-purpose tools, with first-class support for WPEngine.
 
 **Q: Do I need to download all my media files?**
 A: No! Stax uses remote media proxying - it fetches media from your CDN/production server on-demand.
@@ -486,7 +512,7 @@ A: The `.stax.yml` file is meant to be shared via Git for consistency. Personal 
 ## Version History
 
 - **v1.0.0** (Upcoming) - Initial release
-  - WordPress multisite support
+  - WordPress single site and multisite support
   - WPEngine integration
   - Database sync and snapshots
   - Build automation

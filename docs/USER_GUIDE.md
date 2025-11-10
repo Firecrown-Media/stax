@@ -1,12 +1,13 @@
 # Stax User Guide
 
-A comprehensive guide to using Stax for WordPress multisite development.
+A comprehensive guide to using Stax for WordPress development.
 
 ---
 
 ## Table of Contents
 
 - [Introduction](#introduction)
+- [Single Site or Multisite?](#single-site-or-multisite)
 - [Discovering WPEngine Installs](#discovering-wpengine-installs)
 - [Daily Workflows](#daily-workflows)
 - [Database Management](#database-management)
@@ -30,6 +31,60 @@ Before following this guide, make sure you've:
 - [x] Installed Stax and prerequisites
 - [x] Configured credentials with `stax setup`
 - [x] Initialized at least one project with `stax init`
+
+---
+
+## Single Site or Multisite?
+
+Stax works with both standard WordPress installations and multisite networks. Choose what's right for your project:
+
+### Single WordPress Site (Default)
+
+Most WordPress projects are single-site installations. Stax makes it easy to develop them locally:
+
+```yaml
+# .stax.yml
+project:
+  name: my-site
+  type: wordpress  # Single site
+
+wordpress:
+  domain: mysite.local
+```
+
+**Perfect for:**
+- Client websites
+- Blogs
+- Marketing sites
+- E-commerce sites
+- Most WordPress projects
+
+### WordPress Multisite (Optional)
+
+If you're working with a WordPress multisite network, Stax has first-class support:
+
+```yaml
+# .stax.yml
+project:
+  name: my-network
+  type: wordpress-multisite
+  mode: subdomain  # or subdirectory
+
+network:
+  domain: mynetwork.local
+  sites:
+    - name: site1
+      domain: site1.mynetwork.local
+```
+
+**Use multisite when:**
+- You have multiple sites sharing code and database
+- You're working with subdomain or subdirectory networks
+- You need network-level administration
+
+**Not sure?** If you're asking whether you need multisite, you probably don't. Most WordPress projects are single sites.
+
+See [MULTISITE.md](./MULTISITE.md) for detailed multisite documentation.
 
 ---
 
