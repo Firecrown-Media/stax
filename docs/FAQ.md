@@ -138,6 +138,95 @@ Stax handles all the Docker complexity. You just run `stax init` and everything 
 
 ## Using Stax
 
+### How do I find my WPEngine install name?
+
+Use the `stax list` command to see all available installs:
+
+```bash
+stax list
+```
+
+**Output**:
+```
+INSTALL NAME           ENVIRONMENT   PRIMARY DOMAIN              PHP   STATUS
+myinstall              production    mysite.wpengine.com         8.1   active
+myinstall-staging      staging       myinstall-staging.wpe       8.1   active
+client-site            production    clientsite.com              8.2   active
+```
+
+The "Install Name" column shows what you need for `stax init`.
+
+**You can also**:
+- Filter by name: `stax list --filter="client.*"`
+- Filter by environment: `stax list --environment=production`
+- Get JSON output: `stax list --output=json`
+
+**Alternative methods**:
+1. Check WPEngine portal under "Sites"
+2. Look in existing `.stax.yml` files from other projects
+3. Ask your team lead or WPEngine account admin
+
+### Can I use stax list without a project?
+
+**Yes!** That's the whole point of `stax list`.
+
+The `stax list` command is a global command that works anywhere, without needing:
+- A `.stax.yml` file
+- A project directory
+- SSH keys
+- Any existing Stax project
+
+**All you need**:
+- Stax installed
+- WPEngine API credentials (run `stax setup` first)
+
+**Example workflow**:
+```bash
+# Day 1: New computer, no projects yet
+brew install stax
+stax setup  # Configure API credentials
+stax list   # See all available installs
+
+# Now you know which install to use
+cd ~/Sites/new-project
+stax init   # Enter install name from list
+```
+
+### What if stax list shows no installs?
+
+**Possible causes**:
+
+**1. No installs in your WPEngine account**:
+- Verify you have access to WPEngine installs
+- Check with your WPEngine account admin
+- Ensure you're using the correct API credentials
+
+**2. API credentials incorrect**:
+```bash
+stax setup  # Reconfigure credentials
+stax list   # Try again
+```
+
+**3. API access not enabled**:
+- Log in to WPEngine portal
+- Go to Account Settings > API Access
+- Enable API access
+- Create API credentials
+
+**4. Using wrong WPEngine account**:
+- Verify which WPEngine account your API credentials are for
+- You might have multiple WPEngine accounts
+- Use credentials for the account that has your installs
+
+**5. Filters hiding results**:
+```bash
+# Remove all filters
+stax list
+
+# Instead of:
+stax list --filter="something" --environment=production
+```
+
 ### How do I update Stax?
 
 **Via Homebrew**:
