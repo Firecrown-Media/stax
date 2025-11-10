@@ -46,7 +46,7 @@ Features:
 	Version: Version,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip config loading for commands that don't need it
-		if cmd.Name() == "setup" || cmd.Name() == "version" || cmd.Name() == "completion" || cmd.Name() == "man" || cmd.Name() == "list" {
+		if cmd.Name() == "setup" || cmd.Name() == "version" || cmd.Name() == "completion" || cmd.Name() == "man" || cmd.Name() == "list" || cmd.Name() == "doctor" {
 			return nil
 		}
 

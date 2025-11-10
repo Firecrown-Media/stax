@@ -174,17 +174,30 @@ func (m *Manager) Describe() (*ProjectInfo, error) {
 		return nil, fmt.Errorf("failed to parse describe output: %w", err)
 	}
 
+	urls := getURLs(result)
+	status := getStringValue(result, "status")
+	location := getStringValue(result, "shortroot")
+
 	info := &ProjectInfo{
 		Name:            getStringValue(result, "name"),
 		Type:            getStringValue(result, "type"),
-		Location:        getStringValue(result, "shortroot"),
-		URLs:            getURLs(result),
+		Location:        location,
+		AppRoot:         location,
+		URLs:            urls,
+		PrimaryURL:      getPrimaryURL(urls),
 		PHPVersion:      getStringValue(result, "php_version"),
 		RouterHTTPPort:  getStringValue(result, "router_http_port"),
 		RouterHTTPSPort: getStringValue(result, "router_https_port"),
-		Status:          getStringValue(result, "status"),
+		Status:          status,
+		Running:         status == "running",
+		Healthy:         status == "running", // Simplified for now
 		Hostnames:       getHostnames(result),
 		Services:        parseServices(result),
+		Router:          "ddev-router",
+		RouterStatus:    status,
+		Webserver:       "nginx-fpm",
+		XdebugEnabled:   getBoolValue(result, "xdebug_enabled"),
+		MailhogURL:      getMailhogURL(urls),
 	}
 
 	// Parse database info
@@ -425,6 +438,42 @@ func getStringValue(m map[string]interface{}, key string) string {
 		return v
 	}
 	return ""
+}
+
+func getBoolValue(m map[string]interface{}, key string) bool {
+	if v, ok := m[key].(bool); ok {
+		return v
+	}
+	return false
+}
+
+func getPrimaryURL(urls []string) string {
+	if len(urls) > 0 {
+		return urls[0]
+	}
+	return ""
+}
+
+func getMailhogURL(urls []string) string {
+	for _, url := range urls {
+		if containsSubstring(url, "8025") {
+			return url
+		}
+	}
+	return ""
+}
+
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && indexOfSubstring(s, substr) >= 0
+}
+
+func indexOfSubstring(s, substr string) int {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
 }
 
 func getURLs(result map[string]interface{}) []string {

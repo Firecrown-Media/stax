@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/firecrown-media/stax/pkg/ddev"
 	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/spf13/cobra"
 )
@@ -12,10 +16,9 @@ var (
 // statusCmd represents the status command
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "[warning] Show environment status",
+	Short: "✓ Show environment status",
 	Long: `Show detailed status information about the DDEV environment,
-including container health, URLs, configuration, database info, and
-WPEngine sync status.`,
+including container health, URLs, configuration, database info, and more.`,
 	Aliases: []string{"s"},
 	Example: `  # Show status
   stax status
@@ -32,19 +35,130 @@ func init() {
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
-	ui.PrintHeader("Environment Status")
+	projectDir := getProjectDir()
 
-	ui.Warning("[warning] Using DDEV directly (stax wrapper coming soon)")
-	ui.Info("")
-	ui.Info("For now, use DDEV commands directly:")
-	ui.Info("  ddev describe")
-
-	if statusJSON {
-		ui.Info("  ddev describe --json")
+	// Check if project is configured
+	if !ddev.IsConfigured(projectDir) {
+		ui.Warning("DDEV is not configured for this project")
+		ui.Info("Run: stax init to initialize")
+		return nil
 	}
 
-	ui.Info("")
-	ui.Info("Future stax status will provide additional WordPress-specific info.")
+	// Get status
+	status, err := ddev.GetStatus(projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to get status: %w", err)
+	}
+
+	// Output as JSON if requested
+	if statusJSON {
+		output, err := json.MarshalIndent(status, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+		fmt.Println(string(output))
+		return nil
+	}
+
+	// Output formatted status
+	ui.PrintHeader("Environment Status")
+	fmt.Println()
+
+	// Project Information
+	ui.Section("Project Information")
+	fmt.Printf("  Name:        %s\n", status.Name)
+	fmt.Printf("  Type:        %s\n", status.Type)
+	fmt.Printf("  Location:    %s\n", status.AppRoot)
+	fmt.Printf("  Status:      %s\n", getStatusIndicator(status))
+	fmt.Println()
+
+	// URLs
+	ui.Section("URLs")
+	fmt.Printf("  Primary:     %s\n", status.PrimaryURL)
+	if len(status.URLs) > 1 {
+		fmt.Println("  Additional:")
+		for _, url := range status.URLs[1:] {
+			fmt.Printf("    - %s\n", url)
+		}
+	}
+	if status.MailhogURL != "" {
+		fmt.Printf("  Mailhog:     %s\n", status.MailhogURL)
+	}
+	fmt.Println()
+
+	// Container Status
+	ui.Section("Containers")
+	fmt.Printf("  Web:         %s\n", getContainerStatus(status.Running))
+	fmt.Printf("  Database:    %s\n", getContainerStatus(status.Running))
+	fmt.Printf("  Router:      %s\n", getContainerStatus(status.Running))
+	fmt.Println()
+
+	// Configuration
+	ui.Section("Configuration")
+	fmt.Printf("  PHP Version: %s\n", status.PHPVersion)
+	fmt.Printf("  Database:    %s %s\n", status.DatabaseType, status.DatabaseVersion)
+	fmt.Printf("  Webserver:   %s\n", status.Webserver)
+	if status.XdebugEnabled {
+		fmt.Println("  Xdebug:      ✓ Enabled")
+	} else {
+		fmt.Println("  Xdebug:      ✗ Disabled")
+	}
+	fmt.Println()
+
+	// Router Status
+	if status.Router != "" {
+		ui.Section("Router")
+		fmt.Printf("  Status:      %s\n", status.RouterStatus)
+		if status.RouterHTTPPort != "" {
+			fmt.Printf("  HTTP Port:   %s\n", status.RouterHTTPPort)
+		}
+		if status.RouterHTTPSPort != "" {
+			fmt.Printf("  HTTPS Port:  %s\n", status.RouterHTTPSPort)
+		}
+		fmt.Println()
+	}
+
+	// Project Details
+	if cfg != nil {
+		ui.Section("Stax Configuration")
+		fmt.Printf("  Provider:    wpengine\n")
+		if cfg.WPEngine.Install != "" {
+			fmt.Printf("  Install:     %s\n", cfg.WPEngine.Install)
+		}
+		if cfg.WPEngine.Environment != "" {
+			fmt.Printf("  Environment: %s\n", cfg.WPEngine.Environment)
+		}
+		fmt.Println()
+	}
+
+	// Quick actions
+	if status.Running {
+		ui.Info("Quick commands:")
+		ui.Info("  stax stop      - Stop environment")
+		ui.Info("  stax restart   - Restart environment")
+		ui.Info("  stax db pull   - Pull database from WPEngine")
+	} else {
+		ui.Info("Environment is stopped. Run: stax start")
+	}
 
 	return nil
+}
+
+// getStatusIndicator returns a colored status indicator
+func getStatusIndicator(status *ddev.ProjectInfo) string {
+	if !status.Running {
+		return "⚫ Stopped"
+	}
+	if status.Healthy {
+		return "🟢 Running (Healthy)"
+	}
+	return "🟡 Running (Starting up...)"
+}
+
+// getContainerStatus returns container status indicator
+func getContainerStatus(running bool) string {
+	if running {
+		return "🟢 Running"
+	}
+	return "⚫ Stopped"
 }
