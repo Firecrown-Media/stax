@@ -248,6 +248,20 @@ func (m *Manager) Exec(command []string, options *ExecOptions) error {
 	return nil
 }
 
+// ExecCommand executes a DDEV command (like "xdebug on")
+func (m *Manager) ExecCommand(args ...string) error {
+	cmd := exec.Command("ddev", args...)
+	cmd.Dir = m.ProjectDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to execute DDEV command: %w", err)
+	}
+
+	return nil
+}
+
 // Logs retrieves or tails logs from DDEV services
 func (m *Manager) Logs(options *LogOptions) error {
 	if options == nil {

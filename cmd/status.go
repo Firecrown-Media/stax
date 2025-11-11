@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/firecrown-media/stax/pkg/ddev"
 	"github.com/firecrown-media/stax/pkg/errors"
 	"github.com/firecrown-media/stax/pkg/ui"
@@ -61,6 +63,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	if !hasStaxConfig {
 		ui.Warning("Using DDEV configuration only (no .stax.yml found)")
 		ui.Info("Run 'stax init' to enable Stax features like WPEngine sync")
+	}
+
+	// Get status
+	status, err := ddev.GetStatus(projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to get environment status: %w", err)
 	}
 
 	ui.PrintHeader("Environment Status")
