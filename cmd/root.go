@@ -30,13 +30,14 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "stax",
-	Short: "A CLI tool for WordPress multisite development with WPEngine integration",
-	Long: `Stax is a powerful CLI tool that streamlines WordPress multisite development
-workflows. It leverages DDEV for container orchestration and provides seamless
-integration with multiple hosting providers.
+	Short: "A CLI tool for WordPress development with WPEngine integration",
+	Long: `Stax is a powerful CLI tool that streamlines WordPress development workflows.
+It supports both single WordPress sites and multisite networks, leverages DDEV
+for container orchestration, and provides seamless integration with multiple
+hosting providers.
 
 Features:
-  - Automated WordPress multisite setup
+  - Automated WordPress setup (single site or multisite)
   - WPEngine database sync and file management
   - Remote media proxying (BunnyCDN + WPEngine)
   - DDEV container management
@@ -101,7 +102,7 @@ Git Commit: %s
 Build Date: %s
 `, GitCommit, BuildDate))
 
-	// Customize usage template
+	// Customize usage template with status indicators
 	rootCmd.SetUsageTemplate(`Usage:{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
   {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
@@ -123,6 +124,11 @@ Global Flags:
 
 Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Status Indicators:
+  [checkmark] Fully implemented and tested
+  [warning] Partial implementation or workaround available
+  [construction] Placeholder - not yet implemented
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
 `)

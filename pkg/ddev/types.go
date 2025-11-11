@@ -104,20 +104,29 @@ type MediaProxyOptions struct {
 
 // ProjectInfo represents detailed information about a DDEV project
 type ProjectInfo struct {
-	Name            string
-	Type            string
-	Location        string
-	URLs            []string
-	PHPVersion      string
-	DatabaseType    string
-	DatabaseVersion string
-	RouterHTTPPort  string
-	RouterHTTPSPort string
-	Hostnames       []string
-	Status          string
-	Services        []ServiceStatus
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	Name             string
+	Type             string
+	Location         string
+	AppRoot          string // Alias for Location
+	URLs             []string
+	PrimaryURL       string // First URL in the URLs slice
+	PHPVersion       string
+	DatabaseType     string
+	DatabaseVersion  string
+	RouterHTTPPort   string
+	RouterHTTPSPort  string
+	Hostnames        []string
+	Status           string
+	Running          bool // Whether containers are running
+	Healthy          bool // Whether containers are healthy
+	Services         []ServiceStatus
+	Router           string
+	RouterStatus     string
+	Webserver        string
+	XdebugEnabled    bool
+	MailhogURL       string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // ExecOptions contains options for executing commands in DDEV container

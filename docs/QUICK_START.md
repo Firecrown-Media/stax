@@ -1,6 +1,6 @@
 # Stax Quick Start Guide
 
-Get your first WordPress multisite project up and running in 5 minutes or less.
+Get your first WordPress project up and running in 5 minutes or less.
 
 ---
 
@@ -21,7 +21,7 @@ If all checks pass, you're ready to go!
 
 ---
 
-## Your First Project in 5 Steps
+## Your First Project in 6 Steps
 
 ### Step 1: Configure Your Credentials (One-Time Setup)
 
@@ -66,13 +66,40 @@ Credentials saved successfully!
 
 ```bash
 # Create a directory for your project
-mkdir -p ~/Sites/my-multisite
-cd ~/Sites/my-multisite
+mkdir -p ~/Sites/my-project
+cd ~/Sites/my-project
 ```
 
 You can use any directory you prefer. Stax works wherever you are.
 
-### Step 3: Initialize Your Project
+### Step 3: Discover Your WPEngine Install (Optional)
+
+If you don't know your WPEngine install name, use the list command to find it:
+
+```bash
+stax list
+```
+
+**Expected output**:
+```
+Listing WPEngine Installs
+
+INSTALL NAME           ENVIRONMENT   PRIMARY DOMAIN              PHP   STATUS
+myinstall              production    mysite.wpengine.com         8.1   active
+myinstall-staging      staging       myinstall-staging.wpe       8.1   active
+client-site            production    clientsite.com              8.2   active
+
+Total: 3 installs
+```
+
+**Tips**:
+- The "Install Name" column shows what you'll enter during `stax init`
+- Use `--filter` to narrow down results: `stax list --filter="client.*"`
+- Use `--environment` to see only production or staging: `stax list --environment=production`
+
+**Skip this step if you already know your install name**.
+
+### Step 4: Initialize Your Project
 
 ```bash
 stax init
@@ -82,8 +109,19 @@ Stax will now guide you through an interactive setup. Here's what you'll be aske
 
 **Project name**: (defaults to directory name)
 ```
-? Project name: my-multisite
+? Project name: my-project
 ```
+
+**Project type**: (wordpress or wordpress-multisite)
+```
+? Project type:
+  ❯ wordpress (single site)
+    wordpress-multisite
+```
+Choose `wordpress` for a standard single-site installation (most common).
+Choose `wordpress-multisite` if you're working with a multisite network.
+
+**For multisite projects only:**
 
 **Multisite mode**: (subdomain or subdirectory)
 ```
@@ -94,17 +132,17 @@ Stax will now guide you through an interactive setup. Here's what you'll be aske
 Choose `subdomain` if your production site uses subdomains (e.g., site1.example.com).
 Choose `subdirectory` if it uses paths (e.g., example.com/site1).
 
-**Network domain**: (your local domain)
+**Domain**: (your local domain)
 ```
-? Network domain: my-multisite.local
+? Domain: my-project.local
 ```
-This will be your main network URL. Stax automatically configures SSL for `https://`.
+This will be your local development URL. Stax automatically configures SSL for `https://`.
 
 **WPEngine install name**: (your WPEngine install)
 ```
 ? WPEngine install name: myinstall
 ```
-Find this in your WPEngine portal under "Sites".
+Use the install name you found with `stax list` (from Step 3), or find it in your WPEngine portal under "Sites".
 
 **Environment**: (production or staging)
 ```
@@ -207,7 +245,7 @@ WordPress Admin:
   Users:    Your production users (unchanged)
 ```
 
-### Step 4: Access Your Site
+### Step 5: Access Your Site
 
 Open your browser and go to:
 - **Network**: https://my-multisite.local
@@ -223,7 +261,7 @@ Username: (your production admin username)
 Password: (your production admin password)
 ```
 
-### Step 5: Start Developing
+### Step 6: Start Developing
 
 Your environment is now running! Here are some commands to try:
 

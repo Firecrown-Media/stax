@@ -70,7 +70,7 @@ changelog:
 brews:
   - name: stax
     homepage: https://github.com/firecrown-media/stax
-    description: Powerful CLI tool for WordPress multisite development workflows
+    description: Powerful CLI tool for WordPress development workflows (single site and multisite)
     license: MIT
 
     repository:

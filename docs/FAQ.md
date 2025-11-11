@@ -8,21 +8,20 @@ Common questions and answers about Stax.
 
 ### What is Stax?
 
-Stax is a command-line tool that automates WordPress multisite development. It replaces LocalWP for teams that need automated setup, WPEngine integration, and consistent team environments.
+Stax is a command-line tool that automates WordPress development for both single sites and multisite networks. It replaces LocalWP for teams that need automated setup, WPEngine integration, and consistent team environments.
 
 Think of it as: LocalWP + automation + team collaboration + hosting integration.
 
 ### Who should use Stax?
 
 **Stax is perfect for**:
-- WordPress developers working with multisite
+- WordPress developers (single site or multisite)
 - Teams using WPEngine hosting
 - Anyone who wants automated, consistent local development
 - Developers comfortable with command-line tools
 
 **Stax might not be for you if**:
 - You prefer GUI tools over command-line
-- You work with single-site WordPress (though it still works)
 - You're not using macOS (Windows/Linux not supported yet)
 
 ### How is Stax different from LocalWP?
@@ -40,13 +39,30 @@ Think of it as: LocalWP + automation + team collaboration + hosting integration.
 
 **Bottom line**: Stax is faster, more automated, and better for teams.
 
+### Can I use Stax for single-site WordPress?
+
+**Absolutely!** Stax works great for standard single-site WordPress installations. In fact, the default project type is now `wordpress` (single site) rather than `wordpress-multisite`.
+
+All core features work perfectly for single sites:
+- Automatic database sync from WPEngine
+- Remote media proxying
+- Database snapshots and restore
+- Build automation
+- Team-friendly configuration
+
+**When to use single site vs. multisite:**
+- **Use single site** for most WordPress projects (blogs, client sites, marketing sites, etc.)
+- **Use multisite** only when you need multiple sites sharing code and database
+
+If you're not sure whether you need multisite, you probably don't. Most WordPress projects are single sites.
+
 ### How is Stax different from wp-env or other tools?
 
 **vs wp-env** (WordPress's official tool):
-- Stax is specialized for multisite
+- Stax supports both single sites and multisite networks
 - Stax has WPEngine integration
 - Stax has more features (snapshots, builds, linting)
-- wp-env is simpler for basic single-site development
+- wp-env is simpler for basic development
 
 **vs DDEV directly**:
 - Stax adds WordPress-specific features on top of DDEV
@@ -137,6 +153,95 @@ Stax handles all the Docker complexity. You just run `stax init` and everything 
 ---
 
 ## Using Stax
+
+### How do I find my WPEngine install name?
+
+Use the `stax list` command to see all available installs:
+
+```bash
+stax list
+```
+
+**Output**:
+```
+INSTALL NAME           ENVIRONMENT   PRIMARY DOMAIN              PHP   STATUS
+myinstall              production    mysite.wpengine.com         8.1   active
+myinstall-staging      staging       myinstall-staging.wpe       8.1   active
+client-site            production    clientsite.com              8.2   active
+```
+
+The "Install Name" column shows what you need for `stax init`.
+
+**You can also**:
+- Filter by name: `stax list --filter="client.*"`
+- Filter by environment: `stax list --environment=production`
+- Get JSON output: `stax list --output=json`
+
+**Alternative methods**:
+1. Check WPEngine portal under "Sites"
+2. Look in existing `.stax.yml` files from other projects
+3. Ask your team lead or WPEngine account admin
+
+### Can I use stax list without a project?
+
+**Yes!** That's the whole point of `stax list`.
+
+The `stax list` command is a global command that works anywhere, without needing:
+- A `.stax.yml` file
+- A project directory
+- SSH keys
+- Any existing Stax project
+
+**All you need**:
+- Stax installed
+- WPEngine API credentials (run `stax setup` first)
+
+**Example workflow**:
+```bash
+# Day 1: New computer, no projects yet
+brew install stax
+stax setup  # Configure API credentials
+stax list   # See all available installs
+
+# Now you know which install to use
+cd ~/Sites/new-project
+stax init   # Enter install name from list
+```
+
+### What if stax list shows no installs?
+
+**Possible causes**:
+
+**1. No installs in your WPEngine account**:
+- Verify you have access to WPEngine installs
+- Check with your WPEngine account admin
+- Ensure you're using the correct API credentials
+
+**2. API credentials incorrect**:
+```bash
+stax setup  # Reconfigure credentials
+stax list   # Try again
+```
+
+**3. API access not enabled**:
+- Log in to WPEngine portal
+- Go to Account Settings > API Access
+- Enable API access
+- Create API credentials
+
+**4. Using wrong WPEngine account**:
+- Verify which WPEngine account your API credentials are for
+- You might have multiple WPEngine accounts
+- Use credentials for the account that has your installs
+
+**5. Filters hiding results**:
+```bash
+# Remove all filters
+stax list
+
+# Instead of:
+stax list --filter="something" --environment=production
+```
 
 ### How do I update Stax?
 

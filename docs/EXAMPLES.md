@@ -2,10 +2,13 @@
 
 Practical examples for common workflows and scenarios.
 
+> **Note**: The examples below show multisite configurations for demonstration purposes, but all workflows work equally well for single-site WordPress projects. Simply use `type: wordpress` instead of `type: wordpress-multisite` in your `.stax.yml` configuration.
+
 ---
 
 ## Table of Contents
 
+- [Discovering Installs](#discovering-installs)
 - [Daily Development](#daily-development)
 - [Database Workflows](#database-workflows)
 - [Feature Development](#feature-development)
@@ -13,6 +16,143 @@ Practical examples for common workflows and scenarios.
 - [Testing and QA](#testing-and-qa)
 - [Emergency Recovery](#emergency-recovery)
 - [Onboarding](#onboarding)
+
+---
+
+## Discovering Installs
+
+### Scenario 1: New Team Member Setup
+
+**Goal**: Onboard a new developer with zero knowledge of the project.
+
+```bash
+# Day 1: Install prerequisites
+brew tap firecrown-media/stax
+brew install stax
+
+# Configure WPEngine credentials
+stax setup
+# Enter API username: developer@company.com
+# Enter API password: ********
+
+# Discover available installs
+stax list
+```
+
+**Output**:
+```
+INSTALL NAME           ENVIRONMENT   PRIMARY DOMAIN              PHP   STATUS
+client-prod            production    client.com                  8.2   active
+client-staging         staging       client-staging.wpe          8.2   active
+internal-site          production    internal.company.com        8.1   active
+```
+
+```bash
+# Clone project repository
+git clone https://github.com/company/client-project.git
+cd client-project
+
+# Initialize Stax project (use install from list)
+stax init
+# Enter install name: client-staging
+
+# Wait 3-5 minutes for setup...
+# Open site
+open https://client-project.local
+```
+
+**Expected result**: New developer productive in 15 minutes.
+
+### Scenario 2: Finding the Right Install
+
+**Goal**: You have multiple clients and need to find the right install.
+
+```bash
+# List all installs
+stax list
+
+# Too many results, filter by client name
+stax list --filter="acme.*"
+```
+
+**Output**:
+```
+INSTALL NAME           ENVIRONMENT   PRIMARY DOMAIN              PHP   STATUS
+acme-prod              production    acme.com                    8.2   active
+acme-staging           staging       acme-staging.wpe            8.2   active
+acme-dev               development   acme-dev.wpe                8.1   active
+```
+
+```bash
+# Found it! Use staging for development
+cd ~/Sites/acme-project
+stax init
+# Enter install name: acme-staging
+```
+
+### Scenario 3: Auditing All Installs
+
+**Goal**: Generate a report of all WPEngine installs and their configurations.
+
+```bash
+# Get all installs as JSON
+stax list --output=json > all-installs.json
+
+# Get only production installs
+stax list --environment=production --output=json > production-installs.json
+
+# Process with jq to get specific info
+stax list --output=json | jq '.[] | {name: .name, php: .metadata.php_version, domain: .primary_domain}'
+
+# Find installs on old PHP versions
+stax list --output=json | jq '.[] | select(.metadata.php_version < "8.1") | .name'
+
+# Count installs by environment
+stax list --output=json | jq 'group_by(.environment) | map({environment: .[0].environment, count: length})'
+```
+
+**Expected output**:
+```json
+[
+  {"environment": "production", "count": 15},
+  {"environment": "staging", "count": 15},
+  {"environment": "development", "count": 3}
+]
+```
+
+**Use cases**:
+- Security audit (find old PHP versions)
+- Inventory management
+- Documentation generation
+- Billing/usage tracking
+
+### Scenario 4: Forgot Install Name Mid-Project
+
+**Goal**: You're setting up an existing project but don't know the install name.
+
+```bash
+# Clone the repo
+git clone https://github.com/company/mystery-project.git
+cd mystery-project
+
+# Check if there's a .stax.yml (maybe it's already configured)
+cat .stax.yml
+# No file found...
+
+# List installs to find it
+stax list
+
+# Too many, filter by likely names from the repo
+stax list --filter="mystery"
+stax list --filter="company.*"
+
+# Still not sure? Get help from README or ask team
+cat README.md | grep -i "wpengine"
+
+# Found it in README: "Uses WPEngine install: company-mystery-prod"
+stax init
+# Enter: company-mystery-prod
+```
 
 ---
 

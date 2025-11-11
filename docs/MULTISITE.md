@@ -2,6 +2,8 @@
 
 A comprehensive guide to WordPress multisite development with Stax.
 
+> **Note**: This guide is specifically for WordPress **multisite** networks. If you're working with a standard single-site WordPress installation, see the [User Guide](./USER_GUIDE.md) instead. Most WordPress projects don't need multisite.
+
 ---
 
 ## Table of Contents

@@ -62,6 +62,79 @@ stax --help
 
 ## Core Commands
 
+### stax list
+
+List available WPEngine installs.
+
+**Usage**:
+```bash
+stax list [flags]
+```
+
+**Flags**:
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--output` | `-o` | string | table | Output format (table, json, yaml) |
+| `--provider` | `-p` | string | wpengine | Provider to list from |
+| `--filter` | `-f` | string | | Filter by install name (regex) |
+| `--environment` | `-e` | string | | Filter by environment |
+
+**Examples**:
+```bash
+# List all installs
+stax list
+
+# List with JSON output
+stax list --output=json
+
+# Filter by name (regex)
+stax list --filter="client.*"
+stax list --filter="fs-.*-prod"
+
+# Filter by environment
+stax list --environment=production
+stax list --environment=staging
+
+# Combined filters
+stax list --filter="fs.*" --environment=staging
+
+# YAML output for scripting
+stax list --output=yaml
+```
+
+**Output**:
+```
+INSTALL NAME       ENVIRONMENT   PRIMARY DOMAIN           PHP   STATUS
+myinstall          production    mysite.wpengine.com      8.1   active
+myinstall-staging  staging       myinstall-staging.wpe    8.1   active
+client-prod        production    client.com               8.2   active
+
+Total: 3 installs
+```
+
+**What it does**:
+- Lists all WPEngine installations accessible to your account
+- Works globally without requiring a stax.yml file
+- Useful for discovering install names before running `stax init`
+- Supports filtering by name (regex) and environment
+- Multiple output formats for different use cases
+
+**When to use**:
+- Before initializing a new project (to find install names)
+- When onboarding new team members
+- To audit all available WPEngine installs
+- When you forget an install name
+- For scripting and automation (JSON/YAML output)
+
+**Notes**:
+- Requires WPEngine credentials (run `stax setup` first)
+- Uses your API credentials from keychain/env vars
+- Does not require SSH key (API only)
+- No stax.yml file needed
+- Fast operation (typically <5 seconds)
+
+---
+
 ### stax init
 
 Initialize a new Stax project.
@@ -760,6 +833,7 @@ stax logs -f --timestamp
 
 ```bash
 # Project lifecycle
+stax list           # List WPEngine installs
 stax init           # Initialize project
 stax start          # Start environment
 stax stop           # Stop environment

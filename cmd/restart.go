@@ -15,13 +15,19 @@ var (
 // restartCmd represents the restart command
 var restartCmd = &cobra.Command{
 	Use:   "restart",
-	Short: "Restart the DDEV environment",
-	Long:  `Restart the DDEV environment (stop followed by start).`,
+	Short: "✓ Restart the DDEV environment",
+	Long: `Restart the DDEV environment (stop followed by start).
+
+This is equivalent to running 'stax stop' followed by 'stax start',
+but is more efficient as it uses DDEV's built-in restart capability.`,
 	Example: `  # Basic restart
   stax restart
 
   # Restart with build
-  stax restart --build`,
+  stax restart --build
+
+  # Restart with Xdebug
+  stax restart --xdebug`,
 	RunE: runRestart,
 }
 
@@ -33,7 +39,7 @@ func init() {
 }
 
 func runRestart(cmd *cobra.Command, args []string) error {
-	ui.PrintHeader("Restarting Environment")
+	ui.PrintHeader("Restarting DDEV Environment")
 
 	projectDir := getProjectDir()
 
@@ -69,9 +75,64 @@ func runRestart(cmd *cobra.Command, args []string) error {
 	// TODO: Enable Xdebug if requested
 	// TODO: Run build process if requested
 
-	ui.Info("Environment restart is not yet implemented")
+	// Check if project is configured
+	if !ddev.IsConfigured(projectDir) {
+		return fmt.Errorf("DDEV is not configured for this project. Run: stax init")
+	}
 
-	ui.Success("Environment restarted!")
+	// Restart DDEV
+	spinner := ui.NewSpinner("Restarting DDEV containers")
+	spinner.Start()
+
+	if err := ddev.Restart(projectDir); err != nil {
+		spinner.Stop()
+		return fmt.Errorf("failed to restart environment: %w", err)
+	}
+
+	spinner.Success("DDEV containers restarted")
+
+	// Wait for services
+	ui.Info("Waiting for services to be ready...")
+	if err := waitForServices(projectDir); err != nil {
+		ui.Warning("Services may not be fully ready yet")
+	}
+
+	// Enable Xdebug if requested
+	if restartXdebug {
+		spinner = ui.NewSpinner("Enabling Xdebug")
+		spinner.Start()
+
+		if err := ddev.EnableXdebug(projectDir); err != nil {
+			spinner.Stop()
+			ui.Warning(fmt.Sprintf("Failed to enable Xdebug: %v", err))
+		} else {
+			spinner.Success("Xdebug enabled")
+		}
+	}
+
+	// Run build if requested
+	if restartBuild {
+		spinner = ui.NewSpinner("Running build process")
+		spinner.Start()
+
+		if err := runBuildProcess(projectDir); err != nil {
+			spinner.Stop()
+			ui.Warning(fmt.Sprintf("Build process failed: %v", err))
+		} else {
+			spinner.Success("Build completed")
+		}
+	}
+
+	// Get and display status
+	status, err := ddev.GetStatus(projectDir)
+	if err != nil {
+		ui.Warning("Could not retrieve environment status")
+	} else {
+		fmt.Println()
+		ui.Success("Environment restarted successfully!")
+		fmt.Println()
+		fmt.Printf("Primary URL: %s\n", status.PrimaryURL)
+	}
 
 	return nil
 }

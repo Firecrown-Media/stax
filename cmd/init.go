@@ -33,7 +33,7 @@ var (
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize a new Stax project",
+	Short: "[construction] Initialize a new Stax project",
 	Long: `Initialize a new Stax project in the current directory.
 
 This command can either:
@@ -79,7 +79,7 @@ func init() {
 
 	// Flags
 	initCmd.Flags().StringVar(&initName, "name", "", "project name (default: current directory name)")
-	initCmd.Flags().StringVar(&initType, "type", "wordpress-multisite", "project type")
+	initCmd.Flags().StringVar(&initType, "type", "wordpress", "project type (wordpress or wordpress-multisite)")
 	initCmd.Flags().StringVar(&initMode, "mode", "subdomain", "multisite mode (subdomain/subdirectory)")
 	initCmd.Flags().StringVar(&initPHPVersion, "php-version", "8.1", "PHP version")
 	initCmd.Flags().StringVar(&initMySQLVersion, "mysql-version", "8.0", "MySQL version")
