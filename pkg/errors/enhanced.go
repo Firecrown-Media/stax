@@ -7,6 +7,18 @@ import (
 	"github.com/fatih/color"
 )
 
+// Error codes
+const (
+	ErrCodeConfigNotFound        = "STX-001"
+	ErrCodeCredentialsNotFound   = "STX-002"
+	ErrCodeSSHKeyNotFound        = "STX-003"
+	ErrCodeDDEVNotInstalled      = "STX-004"
+	ErrCodeDDEVNotConfigured     = "STX-005"
+	ErrCodeCommandNotImplemented = "STX-006"
+	ErrCodeInvalidConfig         = "STX-007"
+	ErrCodeWPEngineAPI           = "STX-008"
+)
+
 // Solution represents a proposed solution to an error
 type Solution struct {
 	// Description of the solution
