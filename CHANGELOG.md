@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/Firecrown-Media/stax/compare/v2.1.0...v2.1.1) (2025-11-11)
+
+
+### Bug Fixes
+
+* **ci:** update release-please workflow to v4 configuration ([5b87221](https://github.com/Firecrown-Media/stax/commit/5b87221c092b76e3b07219d83403dd2564d2488a))
+
 ## [1.1.0](https://github.com/Firecrown-Media/stax/compare/v1.0.0...v1.1.0) (2025-11-10)
 
 
