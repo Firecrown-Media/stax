@@ -17,6 +17,7 @@ var (
 	setupSSHKey           string
 	setupInteractive      bool
 	setupCheck            bool
+	setupMethod           string
 )
 
 // setupCmd represents the setup command
@@ -48,6 +49,7 @@ func init() {
 	setupCmd.Flags().StringVar(&setupSSHKey, "ssh-key", "", "Path to SSH private key for WPEngine")
 	setupCmd.Flags().BoolVar(&setupInteractive, "interactive", true, "Interactive credential setup")
 	setupCmd.Flags().BoolVar(&setupCheck, "check", false, "Check credential status and configuration")
+	setupCmd.Flags().StringVar(&setupMethod, "method", "", "Storage method: keychain, file, or env")
 }
 
 func runSetup(cmd *cobra.Command, args []string) error {
@@ -58,15 +60,36 @@ func runSetup(cmd *cobra.Command, args []string) error {
 
 	ui.PrintHeader("Setting up Stax Credentials")
 
-	// Check if keychain is available
-	if !credentials.IsKeychainAvailable() {
-		ui.Warning("macOS Keychain storage is not available in this build")
-		ui.Info("This is normal for Homebrew installations (built with CGO_ENABLED=0)")
-		fmt.Println()
+	// Determine storage method
+	storageMethod := setupMethod
+	keychainAvailable := credentials.IsKeychainAvailable()
 
-		// Show instructions
-		fmt.Println(credentials.GetCredentialsStorageInstructions())
-		return nil
+	if storageMethod == "" {
+		// Auto-detect or prompt for storage method
+		if keychainAvailable {
+			ui.Success("macOS Keychain is available")
+			storageMethod = "keychain"
+		} else {
+			ui.Warning("macOS Keychain storage is not available in this build")
+			ui.Info("This is normal for Homebrew installations (built with CGO_ENABLED=0)")
+			fmt.Println()
+			ui.Info("Available storage methods:")
+			ui.Info("  1. file - Store credentials in ~/.stax/credentials.yml")
+			ui.Info("  2. env  - Use environment variables")
+			fmt.Println()
+
+			if setupInteractive {
+				storageMethod = ui.PromptString("Choose storage method (file/env)", "file")
+			} else {
+				storageMethod = "file"
+			}
+		}
+	}
+
+	// Validate storage method
+	if storageMethod == "keychain" && !keychainAvailable {
+		ui.Error("Keychain storage is not available")
+		return fmt.Errorf("keychain method requested but not available")
 	}
 
 	// Get credentials interactively if not provided
@@ -90,20 +113,34 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("WPEngine credentials are required")
 	}
 
+	// Store credentials based on method
+	switch storageMethod {
+	case "keychain":
+		return setupWithKeychain()
+	case "file":
+		return setupWithFile()
+	case "env":
+		return setupWithEnv()
+	default:
+		return fmt.Errorf("invalid storage method: %s", storageMethod)
+	}
+}
+
+// setupWithKeychain stores credentials in macOS Keychain
+func setupWithKeychain() error {
+	ui.Info("Storing credentials in macOS Keychain...")
+
 	// Store WPEngine credentials
-	ui.Info("Storing WPEngine credentials in Keychain...")
 	wpeCreds := &credentials.WPEngineCredentials{
 		APIUser:     setupWPEngineUser,
 		APIPassword: setupWPEnginePassword,
 		SSHGateway:  "ssh.wpengine.net",
 	}
 
-	// For setup, we'll use a default install name "default"
-	// Users can have multiple installs with different credentials
 	if err := credentials.SetWPEngineCredentials("default", wpeCreds); err != nil {
 		return fmt.Errorf("failed to store WPEngine credentials: %w", err)
 	}
-	ui.Success("WPEngine credentials stored")
+	ui.Success("WPEngine credentials stored in Keychain")
 
 	// Test WPEngine API connection
 	ui.Info("Testing WPEngine API connection...")
@@ -137,6 +174,96 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	ui.Section("\nCredentials saved successfully!")
 	ui.Info("Your credentials are securely stored in macOS Keychain")
 	ui.Info("You can now run 'stax init' to initialize a project")
+
+	return nil
+}
+
+// setupWithFile stores credentials in ~/.stax/credentials.yml
+func setupWithFile() error {
+	ui.Info("Creating credentials file at ~/.stax/credentials.yml...")
+
+	// Build credentials structure
+	credFile := &credentials.CredentialsFile{
+		WPEngine: credentials.WPEngineCredentialsFile{
+			APIUser:     setupWPEngineUser,
+			APIPassword: setupWPEnginePassword,
+			SSHGateway:  "ssh.wpengine.net",
+		},
+	}
+
+	if setupGitHubToken != "" {
+		credFile.GitHub = credentials.GitHubCredentialsFile{
+			Token: setupGitHubToken,
+		}
+	}
+
+	if setupSSHKey != "" {
+		credFile.SSH = credentials.SSHCredentialsFile{
+			PrivateKeyPath: setupSSHKey,
+		}
+	}
+
+	// Save to file
+	if err := credentials.SaveCredentialsFile(credFile); err != nil {
+		return fmt.Errorf("failed to save credentials file: %w", err)
+	}
+
+	ui.Success("Credentials file created successfully")
+
+	// Show the file path
+	credPath, _ := credentials.GetCredentialsFilePath()
+	ui.Info(fmt.Sprintf("Credentials saved to: %s", credPath))
+	ui.Info("File permissions set to 0600 (owner read/write only)")
+
+	ui.Section("\nSecurity Notes:")
+	ui.Warning("Add ~/.stax/credentials.yml to your .gitignore")
+	ui.Warning("Never commit this file to version control")
+
+	ui.Section("\nNext Steps:")
+	ui.Info("You can now run 'stax init' to initialize a project")
+	ui.Info("Run 'stax setup --check' to verify your configuration")
+
+	return nil
+}
+
+// setupWithEnv shows instructions for environment variable setup
+func setupWithEnv() error {
+	ui.Info("Setting up credentials via environment variables...")
+
+	fmt.Println()
+	ui.Section("Add these to your shell profile (~/.zshrc or ~/.bashrc):")
+	fmt.Println()
+
+	if setupWPEngineUser != "" {
+		fmt.Printf("export WPENGINE_API_USER=\"%s\"\n", setupWPEngineUser)
+	} else {
+		fmt.Println("export WPENGINE_API_USER=\"your-api-username\"")
+	}
+
+	if setupWPEnginePassword != "" {
+		fmt.Printf("export WPENGINE_API_PASSWORD=\"%s\"\n", setupWPEnginePassword)
+	} else {
+		fmt.Println("export WPENGINE_API_PASSWORD=\"your-api-password\"")
+	}
+
+	fmt.Println("export WPENGINE_SSH_GATEWAY=\"ssh.wpengine.net\"")
+
+	if setupGitHubToken != "" {
+		fmt.Printf("export GITHUB_TOKEN=\"%s\"\n", setupGitHubToken)
+	}
+
+	if setupSSHKey != "" {
+		fmt.Printf("export STAX_SSH_PRIVATE_KEY=\"%s\"\n", setupSSHKey)
+	}
+
+	fmt.Println()
+	ui.Section("Then reload your shell:")
+	fmt.Println("  source ~/.zshrc")
+
+	fmt.Println()
+	ui.Section("Next Steps:")
+	ui.Info("After setting environment variables, run 'stax setup --check' to verify")
+	ui.Info("You can then run 'stax init' to initialize a project")
 
 	return nil
 }

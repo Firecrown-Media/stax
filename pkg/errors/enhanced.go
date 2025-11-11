@@ -42,6 +42,9 @@ type EnhancedError struct {
 	// Detailed explanation
 	Details string
 
+	// What was tried (locations, methods, etc.)
+	Tried []string
+
 	// Proposed solutions
 	Solutions []Solution
 
@@ -80,6 +83,15 @@ func formatEnhancedError(e *EnhancedError) string {
 		sb.WriteString("\n")
 		sb.WriteString(white.Sprint(e.Details))
 		sb.WriteString("\n")
+	}
+
+	// What was tried
+	if len(e.Tried) > 0 {
+		sb.WriteString("\n")
+		sb.WriteString(yellow.Sprint("Tried:\n"))
+		for _, tried := range e.Tried {
+			sb.WriteString(fmt.Sprintf("  - %s\n", tried))
+		}
 	}
 
 	// Underlying error
@@ -125,6 +137,20 @@ func NewEnhancedError(code, message, details string, solutions []Solution, docsU
 		Code:      code,
 		Message:   message,
 		Details:   details,
+		Tried:     []string{},
+		Solutions: solutions,
+		DocsURL:   docsURL,
+		Err:       err,
+	}
+}
+
+// NewEnhancedErrorWithTried creates a new enhanced error with tried locations
+func NewEnhancedErrorWithTried(code, message, details string, tried []string, solutions []Solution, docsURL string, err error) *EnhancedError {
+	return &EnhancedError{
+		Code:      code,
+		Message:   message,
+		Details:   details,
+		Tried:     tried,
 		Solutions: solutions,
 		DocsURL:   docsURL,
 		Err:       err,

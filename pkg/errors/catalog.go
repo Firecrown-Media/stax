@@ -31,11 +31,12 @@ func NewConfigNotFoundError(path string, err error) *EnhancedError {
 }
 
 // NewCredentialsNotFoundError creates an error for missing WPEngine credentials
-func NewCredentialsNotFoundError(err error) *EnhancedError {
+func NewCredentialsNotFoundError(tried []string, err error) *EnhancedError {
 	return &EnhancedError{
 		Code:    ErrCodeCredentialsNotFound,
 		Message: "WPEngine credentials not configured",
-		Details: "Stax requires WPEngine API credentials to sync databases and files. These credentials are securely stored in your macOS Keychain.",
+		Details: "Stax requires WPEngine API credentials to sync databases and files. These credentials can be stored in macOS Keychain, environment variables, or ~/.stax/credentials.yml file.",
+		Tried:   tried,
 		Solutions: []Solution{
 			{
 				Description: "Configure WPEngine credentials using the setup command",
@@ -61,11 +62,12 @@ func NewCredentialsNotFoundError(err error) *EnhancedError {
 }
 
 // NewSSHKeyNotFoundError creates an error for missing SSH key
-func NewSSHKeyNotFoundError(keyPath string, err error) *EnhancedError {
+func NewSSHKeyNotFoundError(keyPath string, tried []string, err error) *EnhancedError {
 	return &EnhancedError{
 		Code:    ErrCodeSSHKeyNotFound,
 		Message: "SSH key not found or not configured",
 		Details: "Stax requires an SSH key to connect to WPEngine servers. The key should be located at ~/.ssh/id_rsa or another location specified in your configuration.",
+		Tried:   tried,
 		Solutions: []Solution{
 			{
 				Description: "Generate a new SSH key",

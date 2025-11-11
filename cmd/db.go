@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/firecrown-media/stax/pkg/config"
 	"github.com/firecrown-media/stax/pkg/credentials"
+	"github.com/firecrown-media/stax/pkg/errors"
 	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/spf13/cobra"
 )
@@ -74,22 +74,32 @@ func runDBPull(cmd *cobra.Command, args []string) error {
 	ui.PrintHeader("Pulling Database from WPEngine")
 
 	// Load configuration
-	cfg, err := loadConfig()
+	cfg, err := loadConfigForCommand()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
-	// Get WPEngine credentials
-	_, err = getWPEngineCredentials(cfg.WPEngine.Install)
+	// Get WPEngine credentials with fallback
+	creds, err := credentials.GetWPEngineCredentialsWithFallback(cfg.WPEngine.Install)
 	if err != nil {
+		if credErr, ok := err.(*credentials.CredentialsNotFoundError); ok {
+			return errors.NewCredentialsNotFoundError(credErr.Tried, credErr.LastErr)
+		}
 		return fmt.Errorf("failed to get WPEngine credentials: %w", err)
 	}
 
-	// Get SSH key
-	_, err = getSSHKey()
+	// Get SSH key with fallback
+	sshKey, err := credentials.GetSSHPrivateKeyWithFallback("wpengine")
 	if err != nil {
+		if keyErr, ok := err.(*credentials.SSHKeyNotFoundError); ok {
+			return errors.NewSSHKeyNotFoundError("", keyErr.Tried, keyErr.LastErr)
+		}
 		return fmt.Errorf("failed to get SSH key: %w", err)
 	}
+
+	// Use credentials
+	_ = creds
+	_ = sshKey
 
 	// Create snapshot if requested
 	if dbSnapshot {
@@ -130,18 +140,4 @@ func runDBPull(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Helper functions (placeholder implementations)
-func loadConfig() (*config.Config, error) {
-	// TODO: Load from .stax.yml
-	cfg := config.Defaults()
-	cfg.WPEngine.Install = "fsmultisite"
-	return cfg, nil
-}
-
-func getWPEngineCredentials(install string) (*credentials.WPEngineCredentials, error) {
-	return credentials.GetWPEngineCredentials(install)
-}
-
-func getSSHKey() (string, error) {
-	return credentials.GetSSHPrivateKey("wpengine")
-}
+// loadConfigForCommand is now defined in files.go to avoid duplication
