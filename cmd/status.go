@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/firecrown-media/stax/pkg/ddev"
+	"github.com/firecrown-media/stax/pkg/errors"
 	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/spf13/cobra"
 )
@@ -37,30 +35,34 @@ func init() {
 func runStatus(cmd *cobra.Command, args []string) error {
 	projectDir := getProjectDir()
 
-	// Check if project is configured
-	if !ddev.IsConfigured(projectDir) {
-		ui.Warning("DDEV is not configured for this project")
-		ui.Info("Run: stax init to initialize")
-		return nil
+	// Check if we have .stax.yml config
+	hasStaxConfig := false
+	if cfg != nil {
+		hasStaxConfig = true
 	}
 
-	// Get status
-	status, err := ddev.GetStatus(projectDir)
-	if err != nil {
-		return fmt.Errorf("failed to get status: %w", err)
+	// Check if we have DDEV config
+	hasDDEVConfig := ddev.IsConfigured(projectDir)
+
+	if !hasStaxConfig && !hasDDEVConfig {
+		return errors.NewWithSolution(
+			"No project configuration found",
+			"Neither .stax.yml nor .ddev/config.yaml exists",
+			errors.Solution{
+				Description: "Initialize your project",
+				Steps: []string{
+					"Run 'stax init' to set up a new Stax project",
+					"Or run 'ddev config' if you just want basic DDEV",
+				},
+			},
+		)
 	}
 
-	// Output as JSON if requested
-	if statusJSON {
-		output, err := json.MarshalIndent(status, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-		fmt.Println(string(output))
-		return nil
+	if !hasStaxConfig {
+		ui.Warning("Using DDEV configuration only (no .stax.yml found)")
+		ui.Info("Run 'stax init' to enable Stax features like WPEngine sync")
 	}
 
-	// Output formatted status
 	ui.PrintHeader("Environment Status")
 	fmt.Println()
 

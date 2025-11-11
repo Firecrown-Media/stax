@@ -1,29 +1,40 @@
 # Stax
 
-**A powerful CLI tool for WordPress development with seamless hosting integration.**
+**A powerful CLI tool for WordPress development with seamless WPEngine integration.**
 
-**Supports both single WordPress sites and multisite networks.**
-
-Stax automates your entire WordPress development workflow - from environment setup to database syncing - so you can focus on building great sites instead of wrestling with configuration.
+Stax streamlines your WordPress development workflow - from environment setup to database syncing - so you can focus on building great sites instead of wrestling with configuration.
 
 > **🎉 v2.0.0 Release - Complete Environment Management**
-> Stax now provides complete WordPress environment management without requiring DDEV knowledge!
-> New in v2.0.0: Fully functional `start`, `stop`, `restart`, `status`, and `doctor` commands.
-> See [CHANGELOG.md](./CHANGELOG.md) for full details.
+> Stax now provides complete WordPress environment management!
+>
+> **Implemented in v2.0.0:**
+> - ✓ Fully functional `start`, `stop`, `restart`, `status` commands
+> - ✓ Comprehensive `doctor` diagnostics
+> - ✓ New `validate` command for configuration checking
+> - ✓ Enhanced error messages with actionable solutions
+> - ✓ Works with DDEV-only projects (no .stax.yml required)
+> - ✓ Foundation packages: prompts, git operations, system checks
+>
+> **Coming Soon:**
+> - Full `init` command implementation
+> - Enhanced multisite support
+> - Advanced WPEngine sync features
 
 ---
 
 ## What is Stax?
 
-Stax is a command-line tool designed to make WordPress development as simple as possible. Whether you're working with a single WordPress site or a complex multisite network, and whether you're a junior developer getting started or a senior developer managing multiple projects, Stax handles the complex parts of local development automatically.
+Stax is a command-line tool that makes WordPress development simple and consistent. Whether you're working on a single site or multisite network, Stax integrates with DDEV for local development and WPEngine for database synchronization.
 
-**In one command, Stax will:**
-- Set up a complete WordPress environment (single site or multisite)
-- Clone your codebase from GitHub
-- Pull your production database from WPEngine
-- Configure SSL certificates automatically
-- For multisite: Configure all your subsites with the correct local domains
-- Start your development server
+**What Stax provides:**
+- Complete environment management (start, stop, restart, status)
+- Automatic database sync from WPEngine
+- Support for both single site and multisite
+- System diagnostics and health checks
+- Configuration validation
+- Secure credential storage (macOS Keychain)
+- Build automation
+- WP-CLI integration
 
 ## Key Features
 
@@ -37,22 +48,26 @@ Stax is a command-line tool designed to make WordPress development as simple as 
 - **Build Automation** - Automatically runs Composer, npm, and build scripts
 - **Secure Credentials** - Stores API keys and passwords safely in macOS Keychain
 
-## Quick Example
+## Quick Start
+
+Get started with Stax in under 5 minutes:
 
 ```bash
-# First time setup (one-time)
+# 1. Install Stax
+brew install firecrown-media/tap/stax
+
+# 2. Set up credentials (optional)
 stax setup
 
-# Initialize a project
-cd ~/Sites/my-project
+# 3. Initialize your project
+mkdir my-wordpress-site && cd my-wordpress-site
 stax init
 
-# Your WordPress site is now running!
-# Single site: https://myproject.local
-# Multisite: https://myproject.local + subdomains/subdirectories
+# 4. Your environment is now running!
+stax status
 ```
 
-That's it! You now have a fully configured WordPress development environment.
+See [Getting Started Guide](docs/GETTING_STARTED.md) for detailed walkthrough.
 
 ## Who Should Use Stax?
 
@@ -72,33 +87,28 @@ That's it! You now have a fully configured WordPress development environment.
 
 ## Installation
 
-### Quick Install (Recommended)
-
+### Via Homebrew (Recommended)
 ```bash
-# Install via Homebrew
-brew tap Firecrown-Media/stax
-brew install stax
+brew install firecrown-media/tap/stax
+```
 
-# Verify installation
+### Verify Installation
+```bash
 stax --version
 ```
 
-### Build from Source
+### Next Steps
+1. Run `stax setup` to configure credentials
+2. Run `stax init` in your project directory
+3. See [Getting Started Guide](docs/GETTING_STARTED.md) for detailed walkthrough
 
+### Build from Source (Advanced)
 ```bash
-# Clone the repository
 git clone https://github.com/firecrown-media/stax.git
 cd stax
-
-# Build and install
-make build
-make install
-
-# Verify installation
-stax --version
+go build -o stax main.go
+sudo mv stax /usr/local/bin/
 ```
-
-**Full installation guide:** [docs/INSTALLATION.md](./docs/INSTALLATION.md)
 
 ## Prerequisites
 
@@ -109,55 +119,49 @@ Before using Stax, you'll need:
 - **DDEV** - Container platform for WordPress ([Install Guide](https://ddev.readthedocs.io/en/stable/users/install/))
 - **WPEngine Account** - With API access (if using WPEngine features)
 
-Don't worry - our installation guide walks you through setting up each prerequisite.
+Don't worry - the [Getting Started Guide](docs/GETTING_STARTED.md) walks you through setting up each prerequisite.
 
-## Quick Start
+## Common Commands
 
-### 1. Configure Your Credentials
-
-First, store your WPEngine and GitHub credentials securely:
-
+### Project Setup
 ```bash
-stax setup
+stax init                     # Initialize a new Stax project (interactive)
+stax setup                    # Configure WPEngine and GitHub credentials
+stax list                     # List available WPEngine installations
 ```
 
-This will prompt you for:
-- WPEngine API username
-- WPEngine API password
-- GitHub personal access token (for private repos)
-- SSH key for WPEngine
-
-All credentials are stored securely in macOS Keychain.
-
-### 2. Initialize Your First Project
-
+### Environment Management (✓ Fully Implemented in v2.0.0)
 ```bash
-cd ~/Sites/my-multisite-project
-stax init
+stax start                    # Start your development environment
+stax start --xdebug           # Start with Xdebug enabled
+stax start --build            # Start and run build process
+stax stop                     # Stop your environment
+stax stop --all               # Stop all DDEV projects
+stax restart                  # Restart your environment
+stax status                   # Show environment status
+stax doctor                   # Diagnose and fix issues
+stax validate                 # Validate project configuration
 ```
 
-Stax will interactively ask you:
-- Project name
-- Project type (single site or multisite)
-- For multisite: Multisite mode (subdomain or subdirectory)
-- Domain (e.g., `mysite.local`)
-- WPEngine install name
-- Which environment to pull from (production/staging)
-- GitHub repository URL
-- For multisite: Your brand sites and domains
-
-### 3. Start Developing
-
+### Database Operations
 ```bash
-# Your environment is already running!
-# Check the status
-stax status
+stax db pull                  # Pull database from WPEngine
+stax db pull --skip-backup    # Pull without local backup
+stax db snapshot              # Create local database snapshot
+stax db restore               # Restore from snapshot
+```
 
-# Make some changes, then refresh the database
-stax db pull
+### Build & Development
+```bash
+stax build                    # Run the build process
+stax dev                      # Start development mode with file watching
+stax lint                     # Run PHP CodeSniffer
+```
 
-# SSH into the container
-stax ssh
+### WordPress Operations
+```bash
+stax wp -- plugin list        # Run WP-CLI commands
+stax wp -- search-replace     # Run search-replace operations
 
 # View logs
 stax logs -f

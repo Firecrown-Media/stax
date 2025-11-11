@@ -7,33 +7,6 @@ import (
 	"github.com/fatih/color"
 )
 
-// Error codes for Stax errors
-const (
-	// STX-001: Configuration file not found
-	ErrCodeConfigNotFound = "STX-001"
-
-	// STX-002: WPEngine credentials not configured
-	ErrCodeCredentialsNotFound = "STX-002"
-
-	// STX-003: SSH key not found or not configured
-	ErrCodeSSHKeyNotFound = "STX-003"
-
-	// STX-004: DDEV not installed
-	ErrCodeDDEVNotInstalled = "STX-004"
-
-	// STX-005: DDEV not configured for this project
-	ErrCodeDDEVNotConfigured = "STX-005"
-
-	// STX-006: Command not implemented
-	ErrCodeCommandNotImplemented = "STX-006"
-
-	// STX-007: Invalid configuration
-	ErrCodeInvalidConfig = "STX-007"
-
-	// STX-008: WPEngine API error
-	ErrCodeWPEngineAPI = "STX-008"
-)
-
 // Solution represents a proposed solution to an error
 type Solution struct {
 	// Description of the solution
