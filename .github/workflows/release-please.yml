@@ -20,29 +20,6 @@ jobs:
           # Release type - determines how versions are bumped
           release-type: go
 
-          # Package name
-          package-name: stax
-
-          # Path to version file (will update cmd/root.go)
-          version-file: VERSION
-
-          # Include all commits in changelog
-          include-component-in-tag: false
-
-          # Custom changelog sections
-          changelog-types: |
-            [
-              {"type":"feat","section":"Features","hidden":false},
-              {"type":"fix","section":"Bug Fixes","hidden":false},
-              {"type":"perf","section":"Performance Improvements","hidden":false},
-              {"type":"docs","section":"Documentation","hidden":false},
-              {"type":"chore","section":"Miscellaneous","hidden":true},
-              {"type":"refactor","section":"Code Refactoring","hidden":false},
-              {"type":"test","section":"Tests","hidden":true},
-              {"type":"build","section":"Build System","hidden":true},
-              {"type":"ci","section":"Continuous Integration","hidden":true}
-            ]
-
       # The release-please action creates a release PR
       # When that PR is merged, it creates a release and tag
       # This job then triggers the actual release build
