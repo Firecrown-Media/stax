@@ -218,22 +218,36 @@ Please configure your credentials using one of these methods:
 ```
 
 **Solution**:
-```bash
-# Configure credentials
-stax setup
 
-# Or set environment variables
+Stax supports multiple credential storage methods:
+
+**Option 1: Interactive Setup** (Recommended for Development):
+```bash
+# Configure credentials interactively
+stax setup
+```
+Note: Keychain storage is only available when building from source with CGO enabled. Homebrew builds use config file storage instead.
+
+**Option 2: Environment Variables** (Recommended for CI/CD):
+```bash
+# Set in your shell profile (~/.zshrc or ~/.bashrc)
 export WPENGINE_API_USER="your-username"
 export WPENGINE_API_PASSWORD="your-password"
+```
 
-# Or create credentials file
+**Option 3: Config File** (Alternative):
+```bash
+# Create credentials file
 mkdir -p ~/.stax
 cat > ~/.stax/credentials.yml <<EOF
 wpengine:
   api_user: your-username
   api_password: your-password
 EOF
+chmod 600 ~/.stax/credentials.yml
 ```
+
+**For detailed credential setup instructions**, see [WPENGINE.md](WPENGINE.md#getting-your-wpengine-api-credentials)
 
 ### "Authentication failed"
 
@@ -254,12 +268,21 @@ stax setup
 ```
 
 **2. API access not enabled**:
-- Log in to WPEngine portal
+Your account must have API access enabled (requires Owner role):
+- Log in to [WPEngine User Portal](https://my.wpengine.com)
 - Go to Account Settings > API Access
-- Enable API access
+- Enable API access (Owner role required)
 - Create new API credentials if needed
+- See [Enabling WPEngine API](https://wpengine.com/support/enabling-wp-engine-api/) for official instructions
 
-**3. Incorrect username format**:
+**3. Insufficient account permissions**:
+Your user role may not have the necessary permissions:
+- Check your role at [WPEngine User Portal](https://my.wpengine.com)
+- You need Owner role to enable API, or appropriate role for access
+- See [WPEngine User Roles](https://wpengine.com/support/users/) for role descriptions
+- Contact your account owner if you need additional permissions
+
+**4. Incorrect username format**:
 ```bash
 # Should be your email or API username
 # NOT your WPEngine login username
@@ -333,6 +356,51 @@ stax list --filter="myinstall"
 # Verify credentials
 stax setup
 ```
+
+### API Access Permissions Issues
+
+**Symptom**: Can't enable API access or can't access certain installs even with valid credentials.
+
+**Understanding WPEngine User Roles**:
+
+WPEngine has different user roles with varying permissions. See [WPEngine User Roles](https://wpengine.com/support/users/) for complete details.
+
+**Common scenarios**:
+
+**1. Can't enable API access**:
+- **Cause**: Only users with the Owner role can enable API access
+- **Solution**:
+  - Contact your account owner to enable API access
+  - Or have them upgrade your role to Owner
+  - Check your role at [WPEngine User Portal](https://my.wpengine.com)
+
+**2. API enabled but can't access installs**:
+- **Cause**: Your user role (Full User or Partial User) may not have access to specific installs
+- **Solution**:
+  - Check which installs you have access to at [WPEngine User Portal](https://my.wpengine.com)
+  - Contact your account owner to grant access to specific installs
+  - Partial Users only have access to installs they've been explicitly granted
+
+**3. Need to verify your permissions**:
+```bash
+# Test your access
+stax list
+
+# This will show all installs you have access to
+# If you don't see an install, you don't have permission to access it
+```
+
+**4. Requesting access**:
+- Go to [WPEngine User Portal](https://my.wpengine.com)
+- Check your current role and install access
+- Contact your account owner or administrator
+- Provide specific install names you need access to
+- Reference the [WPEngine Users Guide](https://wpengine.com/support/users/) for role requirements
+
+**Role summary**:
+- **Owner**: Full access, can enable API, manage users
+- **Full User**: Access to all installs, but can't enable API
+- **Partial User**: Access only to specific installs, can't enable API
 
 ### List command is slow
 

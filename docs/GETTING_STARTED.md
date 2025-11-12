@@ -82,8 +82,13 @@ stax setup
 
 **What this does:**
 - Prompts for WPEngine username and password
-- Stores credentials securely in macOS Keychain
+- Stores credentials securely in macOS Keychain (for builds from source) or config file (for Homebrew installs)
 - Can be skipped if doing local-only development
+
+**Prerequisites for WPEngine API Access:**
+- Your WPEngine account must have API access enabled (requires Owner role)
+- See [WPEngine Credentials Guide](WPENGINE.md#getting-your-wpengine-api-credentials) for detailed setup instructions
+- Official guide: [Enabling WPEngine API](https://wpengine.com/support/enabling-wp-engine-api/)
 
 **Example interaction:**
 ```
@@ -91,6 +96,8 @@ stax setup
 ? WPEngine Password: ********
 ✓ Credentials saved to macOS Keychain
 ```
+
+**Don't have API access?** Check your account permissions or contact your WPEngine account owner to enable API access. See the [WPEngine Credentials Guide](WPENGINE.md#getting-your-wpengine-api-credentials) for help.
 
 ---
 
@@ -462,7 +469,13 @@ stax doctor
 
 ### "Failed to pull database"
 
-**Problem:** WPEngine credentials invalid or network issue
+**Problem:** WPEngine credentials invalid, network issue, or permissions problem
+
+**Common credential-related failures:**
+- **Invalid credentials** - Username or password incorrect
+- **API access not enabled** - Account doesn't have API access (requires Owner role)
+- **Insufficient permissions** - User role doesn't have access to the install
+- **Network connectivity** - Can't reach WPEngine servers
 
 **Solution:**
 ```bash
@@ -472,9 +485,14 @@ stax setup
 # Verify credentials are correct
 stax list
 
-# Check WPEngine install name
+# Check WPEngine install name and permissions
 # Make sure you have SSH access to the install
 ```
+
+**Still having issues?**
+- See detailed troubleshooting in [WPENGINE.md](WPENGINE.md#troubleshooting)
+- Check your account permissions at [WPEngine User Portal](https://my.wpengine.com)
+- Contact WPEngine support: [https://help.wpengine.com/requests](https://help.wpengine.com/requests)
 
 ---
 

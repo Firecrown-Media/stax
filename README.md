@@ -117,7 +117,11 @@ Before using Stax, you'll need:
 - **macOS 12+** (Monterey or later) - macOS only for now
 - **Docker Desktop** - For running containers ([Download](https://www.docker.com/products/docker-desktop))
 - **DDEV** - Container platform for WordPress ([Install Guide](https://ddev.readthedocs.io/en/stable/users/install/))
-- **WPEngine Account** - With API access (if using WPEngine features)
+- **WPEngine Account** - With appropriate access (if using WPEngine features)
+  - Requires Owner role to enable API access initially
+  - Requires appropriate user role (Owner, Full User, or Partial User) for install access
+  - See [WPEngine Setup Guide](docs/WPENGINE.md#getting-started) for detailed instructions
+  - Official guide: [WPEngine User Roles](https://wpengine.com/support/users/)
 
 Don't worry - the [Getting Started Guide](docs/GETTING_STARTED.md) walks you through setting up each prerequisite.
 
