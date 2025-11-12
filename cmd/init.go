@@ -8,8 +8,13 @@ import (
 	"strings"
 
 	"github.com/firecrown-media/stax/pkg/config"
+	"github.com/firecrown-media/stax/pkg/credentials"
 	"github.com/firecrown-media/stax/pkg/ddev"
 	"github.com/firecrown-media/stax/pkg/errors"
+	"github.com/firecrown-media/stax/pkg/git"
+	"github.com/firecrown-media/stax/pkg/prompts"
+	"github.com/firecrown-media/stax/pkg/provider"
+	"github.com/firecrown-media/stax/pkg/providers/wpengine"
 	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/spf13/cobra"
 )
@@ -26,27 +31,33 @@ var (
 	initWPEngineEnv     string
 	initInteractive     bool
 	initSkipDB          bool
-	initSkipBuild       bool
+	initSkipFiles       bool
 	initFromDDEV        bool
+	initTemplate        bool
+	initShowExample     bool
+	initStart           bool
+	initPullDB          bool
+	initPullFiles       bool
 )
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "🚧 Initialize a new Stax project",
+	Short: "Initialize a new Stax project",
 	Long: `Initialize a new Stax project in the current directory.
 
 This command can either:
-  - Set up a new project from scratch
+  - Set up a new project from scratch (interactive or non-interactive)
   - Import an existing DDEV project (--from-ddev)
+  - Generate configuration templates (--template, --show-example)
 
 For new projects, this will:
   - Create a .stax.yml configuration file
-  - Validate WPEngine credentials (optional)
+  - Optionally configure WPEngine integration
   - Clone the GitHub repository (if specified)
   - Generate DDEV configuration
-  - Start DDEV containers
-  - Optionally pull database from WPEngine
+  - Start DDEV containers (optional)
+  - Pull database and files from WPEngine (optional)
 
 By default, this command runs in interactive mode, prompting for all
 required information. You can skip prompts by providing all flags.`,
@@ -58,42 +69,68 @@ required information. You can skip prompts by providing all flags.`,
 
   # Non-interactive with all flags
   stax init \
-    --name=firecrown-multisite \
+    --name=myproject \
+    --type=wordpress-multisite \
     --mode=subdomain \
-    --php-version=8.1 \
-    --mysql-version=8.0 \
-    --repo=https://github.com/Firecrown-Media/firecrown-multisite.git \
-    --wpengine-install=fsmultisite \
-    --no-interactive
+    --php=8.1 \
+    --mysql=8.0 \
+    --repo=https://github.com/org/repo.git \
+    --branch=main \
+    --install=myinstall \
+    --environment=staging \
+    --start \
+    --pull-db
 
-  # Initialize without database import
-  stax init --skip-db
+  # Generate template configuration
+  stax init --template
 
-  # Initialize without build process
-  stax init --skip-build`,
+  # Show example configuration
+  stax init --show-example`,
 	RunE: runInit,
 }
 
 func init() {
 	rootCmd.AddCommand(initCmd)
 
-	// Flags
+	// Project configuration flags
 	initCmd.Flags().StringVar(&initName, "name", "", "project name (default: current directory name)")
-	initCmd.Flags().StringVar(&initType, "type", "wordpress", "project type (wordpress or wordpress-multisite)")
-	initCmd.Flags().StringVar(&initMode, "mode", "subdomain", "multisite mode (subdomain/subdirectory)")
-	initCmd.Flags().StringVar(&initPHPVersion, "php-version", "8.1", "PHP version")
-	initCmd.Flags().StringVar(&initMySQLVersion, "mysql-version", "8.0", "MySQL version")
+	initCmd.Flags().StringVar(&initType, "type", "wordpress", "project type (wordpress, wordpress-multisite)")
+	initCmd.Flags().StringVar(&initMode, "mode", "subdomain", "multisite mode (subdomain, subdirectory)")
+	initCmd.Flags().StringVar(&initPHPVersion, "php", "8.1", "PHP version")
+	initCmd.Flags().StringVar(&initMySQLVersion, "mysql", "8.0", "MySQL version")
+
+	// Repository flags
 	initCmd.Flags().StringVar(&initRepo, "repo", "", "GitHub repository URL")
 	initCmd.Flags().StringVar(&initBranch, "branch", "main", "repository branch")
-	initCmd.Flags().StringVar(&initWPEngineInstall, "wpengine-install", "", "WPEngine install name")
-	initCmd.Flags().StringVar(&initWPEngineEnv, "wpengine-env", "production", "WPEngine environment")
+
+	// WPEngine flags
+	initCmd.Flags().StringVar(&initWPEngineInstall, "install", "", "WPEngine install name")
+	initCmd.Flags().StringVar(&initWPEngineEnv, "environment", "production", "WPEngine environment (production, staging, development)")
+
+	// Behavior flags
 	initCmd.Flags().BoolVar(&initInteractive, "interactive", true, "enable interactive prompts")
-	initCmd.Flags().BoolVar(&initSkipDB, "skip-db", false, "skip database import")
-	initCmd.Flags().BoolVar(&initSkipBuild, "skip-build", false, "skip build process")
+	initCmd.Flags().BoolVar(&initStart, "start", false, "start DDEV after initialization")
+	initCmd.Flags().BoolVar(&initPullDB, "pull-db", false, "pull database after initialization")
+	initCmd.Flags().BoolVar(&initPullFiles, "pull-files", false, "pull files after initialization")
+	initCmd.Flags().BoolVar(&initSkipDB, "skip-db", false, "skip database operations")
+	initCmd.Flags().BoolVar(&initSkipFiles, "skip-files", false, "skip file operations")
+
+	// Special modes
 	initCmd.Flags().BoolVar(&initFromDDEV, "from-ddev", false, "import existing DDEV project")
+	initCmd.Flags().BoolVar(&initTemplate, "template", false, "generate .stax.yml template to stdout")
+	initCmd.Flags().BoolVar(&initShowExample, "show-example", false, "show example configuration with comments")
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
+	// Handle special modes first
+	if initTemplate {
+		return generateTemplate()
+	}
+
+	if initShowExample {
+		return showExample()
+	}
+
 	ui.PrintHeader("Initializing Stax Project")
 
 	projectDir := getProjectDir()
@@ -103,19 +140,582 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return runInitFromDDEV(projectDir)
 	}
 
-	// TODO: Full init implementation
-	// For now, show helpful guidance
-	ui.Warning("Full init implementation coming soon!")
-	ui.Info("")
-	ui.Info("To set up your project manually:")
-	ui.Info("1. Clone your repository to the current directory")
-	ui.Info("2. Run 'ddev config --project-type=wordpress'")
-	ui.Info("3. Run 'ddev start'")
-	ui.Info("4. Run 'stax db pull' to sync your database")
-	ui.Info("")
-	ui.Info("Or use 'stax init --from-ddev' to import an existing DDEV project")
+	// Run full initialization
+	return runFullInit(projectDir)
+}
+
+func runFullInit(projectDir string) error {
+	// Step 1: Check prerequisites
+	if err := checkPrerequisites(); err != nil {
+		return err
+	}
+
+	// Step 2: Gather project configuration
+	cfg, err := gatherProjectConfiguration(projectDir)
+	if err != nil {
+		return err
+	}
+
+	// Step 3: Check for existing configuration
+	if err := checkExistingConfiguration(projectDir); err != nil {
+		return err
+	}
+
+	// Step 4: Clone repository if specified
+	if cfg.Repository.URL != "" {
+		if err := cloneRepository(projectDir, cfg); err != nil {
+			return err
+		}
+	}
+
+	// Step 5: Generate DDEV configuration
+	if err := generateDDEVConfig(projectDir, cfg); err != nil {
+		return err
+	}
+
+	// Step 6: Generate multisite nginx config if needed
+	if isMultisite(cfg.Project.Type) {
+		if err := generateMultisiteNginxConfig(projectDir, cfg); err != nil {
+			return err
+		}
+	}
+
+	// Step 7: Save Stax configuration
+	configPath := filepath.Join(projectDir, ".stax.yml")
+	if err := config.Save(cfg, configPath); err != nil {
+		return fmt.Errorf("failed to save configuration: %w", err)
+	}
+	ui.Success("Created .stax.yml")
+
+	// Step 8: Start DDEV if requested
+	shouldStart := initStart
+	if initInteractive && !initStart {
+		var err error
+		shouldStart, err = prompts.PromptConfirm("Start DDEV now?", true)
+		if err != nil {
+			return err
+		}
+	}
+
+	if shouldStart {
+		ui.Section("Starting DDEV")
+		spinner := ui.NewSpinner("Starting DDEV containers...")
+		spinner.Start()
+
+		mgr := ddev.NewManager(projectDir)
+		if err := mgr.Start(); err != nil {
+			spinner.Error("Failed to start DDEV")
+			return err
+		}
+		spinner.Success("DDEV started successfully")
+	}
+
+	// Step 9: Pull database if requested
+	if shouldPullDatabase(cfg) {
+		if err := pullDatabase(projectDir, cfg); err != nil {
+			ui.Warning("Database pull failed: %v", err)
+		}
+	}
+
+	// Step 10: Pull files if requested
+	if shouldPullFiles(cfg) {
+		if err := pullFiles(projectDir, cfg); err != nil {
+			ui.Warning("File pull failed: %v", err)
+		}
+	}
+
+	// Print success summary
+	printSuccessSummary(projectDir, cfg)
 
 	return nil
+}
+
+func checkPrerequisites() error {
+	ui.Section("Checking prerequisites")
+
+	// Check if DDEV is installed
+	if !ddev.IsInstalled() {
+		return errors.NewWithSolution(
+			"DDEV is not installed",
+			"Stax requires DDEV to be installed",
+			errors.Solution{
+				Description: "Install DDEV",
+				Steps: []string{
+					"Visit https://ddev.readthedocs.io/en/stable/users/install/",
+					"Follow the installation instructions for your platform",
+					"Run 'ddev version' to verify installation",
+				},
+			},
+		)
+	}
+	ui.Success("DDEV is installed")
+
+	// Check if Git is available (if repository will be cloned)
+	if initRepo != "" || (initInteractive && !initFromDDEV) {
+		if !git.IsGitAvailable() {
+			return errors.NewWithSolution(
+				"Git is not installed",
+				"Git is required for repository cloning",
+				errors.Solution{
+					Description: "Install Git",
+					Steps: []string{
+						"Visit https://git-scm.com/downloads",
+						"Follow the installation instructions for your platform",
+						"Run 'git --version' to verify installation",
+					},
+				},
+			)
+		}
+		ui.Success("Git is installed")
+	}
+
+	return nil
+}
+
+func gatherProjectConfiguration(projectDir string) (*config.Config, error) {
+	ui.Section("Project Configuration")
+
+	cfg := config.Defaults()
+
+	// Project name
+	defaultName := filepath.Base(projectDir)
+	if initName != "" {
+		cfg.Project.Name = initName
+	} else if initInteractive {
+		name, err := prompts.PromptInput("Project name", defaultName)
+		if err != nil {
+			return nil, err
+		}
+		cfg.Project.Name = name
+	} else {
+		cfg.Project.Name = defaultName
+	}
+
+	// Project type
+	if initType != "" {
+		cfg.Project.Type = initType
+		if strings.Contains(initType, "multisite") {
+			if initMode != "" {
+				cfg.Project.Mode = initMode
+			}
+		} else {
+			cfg.Project.Mode = "single"
+		}
+	} else if initInteractive {
+		projectType, err := promptProjectType()
+		if err != nil {
+			return nil, err
+		}
+		cfg.Project.Type = projectType
+
+		if isMultisite(projectType) {
+			mode, err := promptMultisiteMode()
+			if err != nil {
+				return nil, err
+			}
+			cfg.Project.Mode = mode
+		} else {
+			cfg.Project.Mode = "single"
+		}
+	}
+
+	// DDEV configuration
+	cfg.DDEV.PHPVersion = initPHPVersion
+	cfg.DDEV.MySQLVersion = initMySQLVersion
+
+	if initInteractive {
+		phpVersion, err := prompts.PromptInput("PHP version", initPHPVersion)
+		if err != nil {
+			return nil, err
+		}
+		cfg.DDEV.PHPVersion = phpVersion
+
+		mysqlVersion, err := prompts.PromptInput("MySQL version", initMySQLVersion)
+		if err != nil {
+			return nil, err
+		}
+		cfg.DDEV.MySQLVersion = mysqlVersion
+	}
+
+	// WPEngine configuration
+	if err := gatherWPEngineConfiguration(cfg); err != nil {
+		return nil, err
+	}
+
+	// Repository configuration
+	if err := gatherRepositoryConfiguration(cfg); err != nil {
+		return nil, err
+	}
+
+	// Network domain for multisite
+	if isMultisite(cfg.Project.Type) {
+		if initInteractive {
+			defaultDomain := fmt.Sprintf("%s.ddev.site", cfg.Project.Name)
+			domain, err := prompts.PromptInput("Primary domain", defaultDomain)
+			if err != nil {
+				return nil, err
+			}
+			cfg.Network.Domain = domain
+		} else {
+			cfg.Network.Domain = fmt.Sprintf("%s.ddev.site", cfg.Project.Name)
+		}
+	}
+
+	return cfg, nil
+}
+
+func gatherWPEngineConfiguration(cfg *config.Config) error {
+	ui.Section("WPEngine Integration")
+
+	setupWPEngine := false
+	if initWPEngineInstall != "" {
+		setupWPEngine = true
+	} else if initInteractive {
+		var err error
+		setupWPEngine, err = prompts.PromptConfirm("Set up WPEngine integration?", true)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !setupWPEngine {
+		ui.Info("Skipping WPEngine integration")
+		return nil
+	}
+
+	// Load credentials to get available installations
+	var installName string
+	if initWPEngineInstall != "" {
+		installName = initWPEngineInstall
+	} else if initInteractive {
+		// Try to list available installations
+		creds, err := credentials.GetWPEngineCredentials("global")
+		if err == nil {
+			// Show available installations
+			p, err := createWPEngineProviderForListing(creds)
+			if err == nil {
+				sites, err := p.ListSites()
+				if err == nil && len(sites) > 0 {
+					ui.Info("Available WPEngine installations:")
+					for i, site := range sites {
+						if i < 10 { // Limit to first 10
+							ui.Info("  - %s (%s)", site.Name, site.Environment)
+						}
+					}
+					fmt.Println()
+				}
+			}
+		}
+
+		// Prompt for install name
+		name, err := prompts.PromptInput("WPEngine install name", "")
+		if err != nil {
+			return err
+		}
+		installName = name
+	}
+
+	cfg.WPEngine.Install = installName
+
+	// Environment
+	if initWPEngineEnv != "" {
+		cfg.WPEngine.Environment = initWPEngineEnv
+	} else if initInteractive {
+		env, err := prompts.EnvironmentPrompt(cfg.WPEngine.Environment)
+		if err != nil {
+			return err
+		}
+		cfg.WPEngine.Environment = env
+	}
+
+	return nil
+}
+
+func gatherRepositoryConfiguration(cfg *config.Config) error {
+	ui.Section("Repository Configuration")
+
+	cloneRepo := false
+	if initRepo != "" {
+		cloneRepo = true
+	} else if initInteractive {
+		var err error
+		cloneRepo, err = prompts.PromptConfirm("Clone from Git repository?", false)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !cloneRepo {
+		ui.Info("Skipping repository cloning")
+		return nil
+	}
+
+	// Repository URL
+	if initRepo != "" {
+		cfg.Repository.URL = initRepo
+	} else if initInteractive {
+		repoURL, err := prompts.RepositoryPrompt("")
+		if err != nil {
+			return err
+		}
+		cfg.Repository.URL = repoURL
+	}
+
+	// Branch
+	if initBranch != "" {
+		cfg.Repository.Branch = initBranch
+	} else if initInteractive {
+		branch, err := prompts.PromptInput("Repository branch", "main")
+		if err != nil {
+			return err
+		}
+		cfg.Repository.Branch = branch
+	}
+
+	return nil
+}
+
+func checkExistingConfiguration(projectDir string) error {
+	configPath := filepath.Join(projectDir, ".stax.yml")
+	if _, err := os.Stat(configPath); err == nil {
+		if initInteractive {
+			overwrite, err := prompts.PromptConfirm(".stax.yml already exists. Overwrite?", false)
+			if err != nil {
+				return err
+			}
+			if !overwrite {
+				return fmt.Errorf("initialization cancelled by user")
+			}
+		} else {
+			return errors.NewWithSolution(
+				"Configuration already exists",
+				".stax.yml already exists in this directory",
+				errors.Solution{
+					Description: "Choose an action",
+					Steps: []string{
+						"Run with --interactive to confirm overwrite",
+						"Remove .stax.yml manually and try again",
+						"Use a different directory",
+					},
+				},
+			)
+		}
+	}
+
+	// Check for existing DDEV config
+	if ddev.IsConfigured(projectDir) {
+		ui.Warning("DDEV configuration already exists")
+		if initInteractive {
+			overwrite, err := prompts.PromptConfirm("Overwrite existing DDEV configuration?", false)
+			if err != nil {
+				return err
+			}
+			if !overwrite {
+				ui.Info("Will preserve existing DDEV configuration")
+			}
+		}
+	}
+
+	return nil
+}
+
+func cloneRepository(projectDir string, cfg *config.Config) error {
+	ui.Section("Cloning Repository")
+
+	spinner := ui.NewSpinner("Cloning repository...")
+	spinner.Start()
+
+	opts := git.CloneOptions{
+		URL:         cfg.Repository.URL,
+		Destination: projectDir,
+		Branch:      cfg.Repository.Branch,
+		Depth:       cfg.Repository.Depth,
+		Quiet:       !verbose,
+	}
+
+	if err := git.Clone(opts); err != nil {
+		spinner.Error("Failed to clone repository")
+		return err
+	}
+
+	spinner.Success("Repository cloned successfully")
+	return nil
+}
+
+func generateDDEVConfig(projectDir string, cfg *config.Config) error {
+	ui.Section("Generating DDEV Configuration")
+
+	// Check if config already exists
+	if ddev.IsConfigured(projectDir) {
+		ui.Info("DDEV configuration already exists, skipping generation")
+		return nil
+	}
+
+	// Prepare DDEV config options
+	options := ddev.ConfigOptions{
+		ProjectName:     cfg.Project.Name,
+		Type:            mapProjectTypeToDDEV(cfg.Project.Type),
+		DocRoot:         "public",
+		PHPVersion:      cfg.DDEV.PHPVersion,
+		DatabaseType:    cfg.DDEV.MySQLType,
+		DatabaseVersion: cfg.DDEV.MySQLVersion,
+		RouterHTTPPort:  cfg.DDEV.RouterHTTPPort,
+		RouterHTTPSPort: cfg.DDEV.RouterHTTPSPort,
+		XdebugEnabled:   cfg.DDEV.XdebugEnabled,
+		MutagenEnabled:  cfg.DDEV.MutagenEnabled,
+		ComposerVersion: cfg.DDEV.ComposerVersion,
+		NodeJSVersion:   cfg.DDEV.NodeJSVersion,
+	}
+
+	// Add additional hostnames for multisite
+	if isMultisite(cfg.Project.Type) {
+		options.AdditionalHostnames = generateMultisiteHostnames(cfg)
+	}
+
+	// Generate config
+	ddevConfig, err := ddev.GenerateConfig(projectDir, options)
+	if err != nil {
+		return fmt.Errorf("failed to generate DDEV config: %w", err)
+	}
+
+	// Write config
+	if err := ddev.WriteConfig(projectDir, ddevConfig); err != nil {
+		return fmt.Errorf("failed to write DDEV config: %w", err)
+	}
+
+	ui.Success("Generated DDEV configuration")
+	return nil
+}
+
+func generateMultisiteNginxConfig(projectDir string, cfg *config.Config) error {
+	ui.Section("Generating Multisite Configuration")
+
+	// Create nginx configuration directory
+	nginxDir := filepath.Join(projectDir, ".ddev", "nginx_full")
+	if err := os.MkdirAll(nginxDir, 0755); err != nil {
+		return fmt.Errorf("failed to create nginx directory: %w", err)
+	}
+
+	// Generate multisite nginx config based on mode
+	var nginxConfig string
+	if cfg.Project.Mode == "subdomain" {
+		nginxConfig = generateSubdomainNginxConfig(cfg)
+	} else {
+		nginxConfig = generateSubdirectoryNginxConfig(cfg)
+	}
+
+	// Write config
+	configPath := filepath.Join(nginxDir, "multisite.conf")
+	if err := os.WriteFile(configPath, []byte(nginxConfig), 0644); err != nil {
+		return fmt.Errorf("failed to write nginx config: %w", err)
+	}
+
+	ui.Success("Generated multisite nginx configuration")
+	return nil
+}
+
+func shouldPullDatabase(cfg *config.Config) bool {
+	if initSkipDB {
+		return false
+	}
+
+	if initPullDB {
+		return true
+	}
+
+	if cfg.WPEngine.Install == "" {
+		return false
+	}
+
+	if initInteractive {
+		pull, err := prompts.PromptConfirm("Pull database from WPEngine now?", false)
+		if err != nil {
+			return false
+		}
+		return pull
+	}
+
+	return false
+}
+
+func shouldPullFiles(cfg *config.Config) bool {
+	if initSkipFiles {
+		return false
+	}
+
+	if initPullFiles {
+		return true
+	}
+
+	if cfg.WPEngine.Install == "" {
+		return false
+	}
+
+	if initInteractive {
+		pull, err := prompts.PromptConfirm("Pull files from WPEngine now?", false)
+		if err != nil {
+			return false
+		}
+		return pull
+	}
+
+	return false
+}
+
+func pullDatabase(projectDir string, cfg *config.Config) error {
+	ui.Section("Pulling Database")
+	ui.Info("This may take several minutes...")
+
+	// TODO: Integrate with existing database pull functionality
+	// For now, just show a message
+	ui.Warning("Database pull functionality will be integrated in the next iteration")
+	ui.Info("You can pull the database manually by running: stax db pull")
+
+	return nil
+}
+
+func pullFiles(projectDir string, cfg *config.Config) error {
+	ui.Section("Pulling Files")
+	ui.Info("This may take several minutes...")
+
+	// TODO: Integrate with existing file pull functionality
+	// For now, just show a message
+	ui.Warning("File pull functionality will be integrated in the next iteration")
+	ui.Info("You can pull files manually by running: stax files pull")
+
+	return nil
+}
+
+func printSuccessSummary(projectDir string, cfg *config.Config) {
+	ui.PrintHeader("Project Initialized Successfully!")
+
+	fmt.Println()
+	ui.Success("Created:")
+	ui.Info("  - .stax.yml")
+	ui.Info("  - .ddev/config.yaml")
+	if isMultisite(cfg.Project.Type) {
+		ui.Info("  - .ddev/nginx_full/multisite.conf")
+	}
+
+	fmt.Println()
+	ui.Section("Next Steps:")
+
+	if !initStart {
+		ui.ProgressMsg("stax start         - Start DDEV environment")
+	}
+
+	if cfg.WPEngine.Install != "" && !initPullDB {
+		ui.ProgressMsg("stax db pull       - Pull database from WPEngine")
+	}
+
+	if cfg.WPEngine.Install != "" && !initPullFiles {
+		ui.ProgressMsg("stax files pull    - Pull files from WPEngine")
+	}
+
+	ui.ProgressMsg("stax status        - View environment status")
+
+	fmt.Println()
+	ui.Success("Your site will be available at: https://%s.ddev.site", cfg.Project.Name)
 }
 
 func runInitFromDDEV(projectDir string) error {
@@ -151,8 +751,20 @@ func runInitFromDDEV(projectDir string) error {
 	}
 
 	// Read DDEV config to get basic info
-	ddevConfigPath := filepath.Join(projectDir, ".ddev", "config.yaml")
+	ddevConfig, err := ddev.ReadConfig(projectDir)
+	if err != nil {
+		return fmt.Errorf("failed to read DDEV config: %w", err)
+	}
+
 	ui.Success("Found DDEV configuration")
+
+	// Create Stax config from DDEV config
+	cfg := config.Defaults()
+	cfg.Project.Name = ddevConfig.Name
+	cfg.Project.Type = mapDDEVTypeToStax(ddevConfig.Type)
+	cfg.DDEV.PHPVersion = ddevConfig.PHPVersion
+	cfg.DDEV.MySQLVersion = ddevConfig.Database.Version
+	cfg.DDEV.MySQLType = ddevConfig.Database.Type
 
 	// Prompt for optional WPEngine integration
 	ui.Info("\nOptional: Configure WPEngine integration")
@@ -162,26 +774,19 @@ func runInitFromDDEV(projectDir string) error {
 	response = strings.TrimSpace(strings.ToLower(response))
 	addWPEngine := (response == "y" || response == "yes")
 
-	var install, env string
 	if addWPEngine {
 		// Prompt for WPEngine details
 		fmt.Print("WPEngine install name: ")
-		install, _ = reader.ReadString('\n')
+		install, _ := reader.ReadString('\n')
 		install = strings.TrimSpace(install)
 
 		fmt.Print("WPEngine environment (production/staging/development) [production]: ")
-		env, _ = reader.ReadString('\n')
+		env, _ := reader.ReadString('\n')
 		env = strings.TrimSpace(env)
 		if env == "" {
 			env = "production"
 		}
-	}
 
-	// Create basic .stax.yml from DDEV config
-	// Start with defaults and add WPEngine config if provided
-	cfg := config.Defaults()
-
-	if addWPEngine {
 		cfg.WPEngine.Install = install
 		cfg.WPEngine.Environment = env
 	}
@@ -191,7 +796,7 @@ func runInitFromDDEV(projectDir string) error {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 
-	ui.Success("Created .stax.yml from DDEV configuration at %s", ddevConfigPath)
+	ui.Success("Created .stax.yml from DDEV configuration")
 	ui.Info("\nYour DDEV project now has Stax features enabled!")
 	ui.Info("Run 'stax status' to see your environment")
 
@@ -200,4 +805,234 @@ func runInitFromDDEV(projectDir string) error {
 	}
 
 	return nil
+}
+
+func generateTemplate() error {
+	cfg := config.Defaults()
+	cfg.Project.Name = "example-project"
+	cfg.WPEngine.Install = "example-install"
+	cfg.Network.Domain = "example.ddev.site"
+
+	data, err := cfg.ToYAML()
+	if err != nil {
+		return fmt.Errorf("failed to generate template: %w", err)
+	}
+
+	fmt.Println(string(data))
+	return nil
+}
+
+func showExample() error {
+	example := `# Stax Configuration File
+# Version: 1
+
+version: 1
+
+# Project metadata
+project:
+  name: myproject
+  type: wordpress-multisite  # wordpress, wordpress-multisite
+  mode: subdomain            # subdomain, subdirectory, single
+  description: My WordPress project
+
+# WPEngine integration
+wpengine:
+  install: myinstall
+  environment: production    # production, staging, development
+  ssh_gateway: ssh.wpengine.net
+  backup:
+    auto_snapshot: true
+    skip_logs: true
+    skip_transients: true
+    skip_spam: true
+
+# Network configuration (for multisite)
+network:
+  domain: myproject.ddev.site
+  title: My Network
+  sites: []
+
+# DDEV configuration
+ddev:
+  php_version: "8.1"
+  mysql_version: "8.0"
+  mysql_type: mysql
+  webserver_type: nginx-fpm
+  router_http_port: "80"
+  router_https_port: "443"
+  nfs_mount_enabled: false
+  mutagen_enabled: true      # Enable on macOS for better performance
+  xdebug_enabled: false
+  nodejs_version: "20"
+  composer_version: "2"
+
+# Repository configuration
+repository:
+  url: https://github.com/org/repo.git
+  branch: main
+  private: true
+  depth: 1
+  submodules: false
+
+# WordPress configuration
+wordpress:
+  version: latest
+  locale: en_US
+  table_prefix: wp_
+
+# Media proxy configuration
+media:
+  proxy_enabled: true
+  wpengine_fallback: true
+  cache:
+    enabled: true
+    directory: .stax/media-cache
+    max_size: 1GB
+    ttl: 86400
+
+# Logging configuration
+logging:
+  level: info
+  file: ~/.stax/logs/stax.log
+  format: json
+
+# Snapshot configuration
+snapshots:
+  directory: ~/.stax/snapshots
+  auto_snapshot_before_pull: true
+  auto_snapshot_before_import: true
+  retention:
+    auto: 7    # days
+    manual: 30 # days
+
+# Performance configuration
+performance:
+  parallel_downloads: 4
+  rsync_bandwidth_limit: 0
+  database_import_batch_size: 1000
+`
+
+	fmt.Println(example)
+	return nil
+}
+
+// Helper functions
+
+func isMultisite(projectType string) bool {
+	return strings.Contains(projectType, "multisite")
+}
+
+func mapProjectTypeToDDEV(projectType string) string {
+	switch {
+	case strings.Contains(projectType, "multisite"):
+		return "wordpress"
+	default:
+		return projectType
+	}
+}
+
+func mapDDEVTypeToStax(ddevType string) string {
+	// DDEV doesn't distinguish multisite, so default to single
+	return "wordpress"
+}
+
+func promptProjectType() (string, error) {
+	options := []string{
+		"wordpress",
+		"wordpress-multisite",
+	}
+
+	idx, selected, err := prompts.PromptSelect("Select project type:", options, 0)
+	if err != nil {
+		return "", err
+	}
+
+	ui.Info("Selected: %s", selected)
+	return options[idx], nil
+}
+
+func promptMultisiteMode() (string, error) {
+	options := []string{
+		"subdomain",
+		"subdirectory",
+	}
+
+	idx, selected, err := prompts.PromptSelect("Select multisite mode:", options, 0)
+	if err != nil {
+		return "", err
+	}
+
+	ui.Info("Selected: %s", selected)
+	return options[idx], nil
+}
+
+func generateMultisiteHostnames(cfg *config.Config) []string {
+	// For subdomain multisite, generate wildcard hostname
+	if cfg.Project.Mode == "subdomain" {
+		return []string{
+			fmt.Sprintf("*.%s.ddev.site", cfg.Project.Name),
+		}
+	}
+	return []string{}
+}
+
+func generateSubdomainNginxConfig(cfg *config.Config) string {
+	return fmt.Sprintf(`# WordPress Multisite (subdomain) configuration
+# Generated by Stax
+
+# Handle wildcard subdomains for multisite
+server_name_in_redirect off;
+
+# Multisite subdomain rewrite rules
+if (!-e $request_filename) {
+    rewrite /wp-admin$ $scheme://$host$uri/ permanent;
+    rewrite ^(/[^/]+)?(/wp-.*) $2 last;
+    rewrite ^(/[^/]+)?(/.*\.php) $2 last;
+}
+
+# Additional multisite configuration
+location / {
+    try_files $uri $uri/ /index.php?$args;
+}
+
+# Domain: %s
+`, cfg.Network.Domain)
+}
+
+func generateSubdirectoryNginxConfig(cfg *config.Config) string {
+	return fmt.Sprintf(`# WordPress Multisite (subdirectory) configuration
+# Generated by Stax
+
+# Multisite subdirectory rewrite rules
+if (!-e $request_filename) {
+    rewrite /wp-admin$ $scheme://$host$uri/ permanent;
+    rewrite ^(/[^/]+)?(/wp-.*) $2 last;
+    rewrite ^(/[^/]+)?(/.*\.php) $2 last;
+}
+
+# Additional multisite configuration
+location / {
+    try_files $uri $uri/ /index.php?$args;
+}
+
+# Domain: %s
+`, cfg.Network.Domain)
+}
+
+func createWPEngineProviderForListing(creds *credentials.WPEngineCredentials) (provider.Provider, error) {
+	p := &wpengine.WPEngineProvider{}
+
+	credMap := map[string]string{
+		"api_user":     creds.APIUser,
+		"api_password": creds.APIPassword,
+		"install":      "temp",
+		"ssh_gateway":  "ssh.wpengine.net",
+		"ssh_key":      "",
+	}
+
+	if err := p.Authenticate(credMap); err != nil {
+		return nil, err
+	}
+
+	return p, nil
 }
