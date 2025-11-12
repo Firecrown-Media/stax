@@ -33,7 +33,7 @@ var (
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "[construction] Initialize a new Stax project",
+	Short: "🚧 Initialize a new Stax project",
 	Long: `Initialize a new Stax project in the current directory.
 
 This command can either:

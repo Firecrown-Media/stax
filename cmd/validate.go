@@ -14,7 +14,7 @@ import (
 // validateCmd represents the validate command
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validate project configuration",
+	Short: "✓ Validate project configuration",
 	Long: `Validate that your Stax project is properly configured.
 
 This command checks:

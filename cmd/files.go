@@ -15,7 +15,7 @@ import (
 // filesCmd represents the files command group
 var filesCmd = &cobra.Command{
 	Use:   "files",
-	Short: "File synchronization operations",
+	Short: "✓ File synchronization operations",
 	Long:  `Manage file synchronization between WPEngine and local environment including themes, plugins, and uploads.`,
 }
 

@@ -10,7 +10,7 @@ import (
 // configCmd represents the config command group
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Configuration management",
+	Short: "🚧 Configuration management",
 	Long:  `Manage Stax configuration files and values.`,
 }
 
