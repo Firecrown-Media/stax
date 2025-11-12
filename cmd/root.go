@@ -46,7 +46,7 @@ Features:
 	Version: Version,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Commands that don't require .stax.yml config
-		skipConfigCommands := []string{"setup", "version", "completion", "man", "list", "doctor", "init", "start", "stop", "restart", "status"}
+		skipConfigCommands := []string{"setup", "version", "completion", "man", "list", "doctor", "init", "start", "stop", "restart", "status", "wpengine"}
 		for _, skipCmd := range skipConfigCommands {
 			if cmd.Name() == skipCmd {
 				// Still initialize UI
