@@ -23,7 +23,7 @@ var (
 // setupCmd represents the setup command
 var setupCmd = &cobra.Command{
 	Use:   "setup",
-	Short: "Configure WPEngine and GitHub credentials",
+	Short: "⚠ Configure WPEngine and GitHub credentials",
 	Long: `Configure WPEngine and GitHub credentials securely in macOS Keychain.
 
 This command stores sensitive credentials in the macOS Keychain, ensuring

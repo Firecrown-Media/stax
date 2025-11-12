@@ -21,7 +21,7 @@ var (
 // devCmd represents the dev command
 var devCmd = &cobra.Command{
 	Use:   "dev",
-	Short: "Start development mode",
+	Short: "✓ Start development mode",
 	Long: `Start development mode with file watching and auto-rebuild.
 
 This runs 'npm start' in the specified theme directory, which typically

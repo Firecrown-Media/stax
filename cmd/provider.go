@@ -12,7 +12,7 @@ import (
 
 var providerCmd = &cobra.Command{
 	Use:   "provider",
-	Short: "Manage hosting providers",
+	Short: "🚧 Manage hosting providers",
 	Long: `Manage hosting providers for WordPress sites.
 
 Stax supports multiple WordPress hosting providers through a pluggable

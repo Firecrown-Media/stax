@@ -126,9 +126,9 @@ Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
 Status Indicators:
-  [checkmark] Fully implemented and tested
-  [warning] Partial implementation or workaround available
-  [construction] Placeholder - not yet implemented
+  ✓ Fully implemented and tested
+  ⚠ Partial implementation or workaround available
+  🚧 Under development - not yet implemented
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
 `)

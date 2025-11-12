@@ -23,7 +23,7 @@ var (
 // lintCmd represents the lint command
 var lintCmd = &cobra.Command{
 	Use:   "lint",
-	Short: "Run PHP CodeSniffer checks",
+	Short: "✓ Run PHP CodeSniffer checks",
 	Long: `Run PHPCS (PHP CodeSniffer) to check code quality.
 
 Uses the configuration from .phpcs.xml.dist if present, or falls

@@ -12,7 +12,7 @@ import (
 // dbCmd represents the db command group
 var dbCmd = &cobra.Command{
 	Use:   "db",
-	Short: "Database operations",
+	Short: "✓ Database operations",
 	Long:  `Manage database operations including pull, push, import, export, snapshots, and queries.`,
 }
 

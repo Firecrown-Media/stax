@@ -20,7 +20,7 @@ var (
 // buildCmd represents the build command
 var buildCmd = &cobra.Command{
 	Use:   "build",
-	Short: "Build the project",
+	Short: "✓ Build the project",
 	Long: `Build the project by running all build scripts.
 
 This command executes scripts/build.sh which orchestrates:

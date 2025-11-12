@@ -25,7 +25,7 @@ var (
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List available WPEngine installs",
+	Short: "✓ List available WPEngine installs",
 	Long: `List all WPEngine installations available to your account.
 
 This command works globally without requiring a stax.yml file.
