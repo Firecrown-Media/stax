@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.0](https://github.com/Firecrown-Media/stax/compare/v2.1.1...v2.2.0) (2025-11-12)
+
+
+### Features
+
+* **doctor:** enhance diagnostics and add global WPEngine discovery ([d610297](https://github.com/Firecrown-Media/stax/commit/d61029709d67c7c11a03fff17ff4ee4b8666d8c6))
+* **init:** implement complete interactive and non-interactive project initialization ([#47](https://github.com/Firecrown-Media/stax/issues/47)) ([cbcf2e3](https://github.com/Firecrown-Media/stax/commit/cbcf2e36a7711923e5d5e68e95b77b43ec777dcb))
+* **media:** implement media proxy configuration commands ([fc11f20](https://github.com/Firecrown-Media/stax/commit/fc11f20cee8505ebac84461900894d99d2efbf2b))
+* **ui:** add command status indicators and enhanced version command ([#45](https://github.com/Firecrown-Media/stax/issues/45)) ([609599b](https://github.com/Firecrown-Media/stax/commit/609599be4351c7c2f54aa20b77f6a7058cfdd390))
+
 ## [2.1.1](https://github.com/Firecrown-Media/stax/compare/v2.1.0...v2.1.1) (2025-11-11)
 
 
