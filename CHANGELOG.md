@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.0](https://github.com/Firecrown-Media/stax/compare/v2.1.1...v2.2.0) (2025-11-12)
+
+
+### Features
+
+* **init:** implement complete interactive and non-interactive project initialization ([#47](https://github.com/Firecrown-Media/stax/issues/47)) ([5de94cc](https://github.com/Firecrown-Media/stax/commit/5de94cca19a0b56d3d90dcfe8815c44d56bff183))
+* **ui:** add command status indicators and enhanced version command ([#45](https://github.com/Firecrown-Media/stax/issues/45)) ([609599b](https://github.com/Firecrown-Media/stax/commit/609599be4351c7c2f54aa20b77f6a7058cfdd390))
+
 ## [2.1.1](https://github.com/Firecrown-Media/stax/compare/v2.1.0...v2.1.1) (2025-11-11)
 
 
