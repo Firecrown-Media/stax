@@ -51,52 +51,303 @@ Before using WPEngine features:
 3. **SSH Key** added to WPEngine
 4. **Install name** (found in WPEngine portal)
 
+### Understanding WPEngine API Access
+
+Before diving into credential setup, it's helpful to understand what you're configuring and why.
+
+**What are WPEngine API credentials?**
+
+WPEngine API credentials are special login credentials that allow external applications (like Stax) to programmatically access your WPEngine account and perform operations like pulling databases, accessing files, and managing environments. These credentials are separate from your regular WPEngine portal login.
+
+**Why do I need them?**
+
+Stax uses these credentials to authenticate with WPEngine's API and SSH gateway, enabling features like database pulls, file synchronization, and environment management. Without valid credentials, Stax cannot connect to your WPEngine hosting.
+
+**Account requirements and permissions**
+
+Not all WPEngine users can enable or use API access:
+
+- **Owner role**: Required to enable API access for the account (one-time setup)
+- **Full/Partial users**: Can use API access once enabled, with access to their assigned installs
+- **Billing-only users**: Cannot access API features
+
+Learn more about [WPEngine user roles and permissions](https://wpengine.com/support/users/).
+
+**Security best practices**
+
+- Store credentials securely (Stax uses macOS Keychain)
+- Never commit credentials to version control
+- Use unique passwords for API access
+- Rotate credentials periodically
+- Grant API access only to users who need it
+- Consider creating separate API users for different team members or purposes
+
+Official WPEngine API documentation:
+- [WPEngine API Documentation](https://wpengineapi.com/)
+- [Enabling API Access Guide](https://wpengine.com/support/enabling-wp-engine-api/)
+- [Developer's Guide to WPEngine API](https://wpengine.com/builders/mastering-the-wp-engine-api-a-comprehensive-guide-for-developers/)
+
 ### Getting Your WPEngine API Credentials
 
-**Step 1: Access WPEngine Portal**
+Follow these four steps to set up your WPEngine API credentials for use with Stax.
+
+#### Step 1: Verify Account Permissions
+
+Before attempting to enable or use API access, confirm you have the appropriate permissions.
+
+**Check your role**:
+1. Log in to the [WPEngine User Portal](https://my.wpengine.com)
+2. Click your account name in the top right corner
+3. Go to **Account** → **Users**
+4. Find your username and note your role
+
+**Required roles**:
+- To **enable API access**: Must have Owner role
+- To **use API access**: Owner, Full, or Partial user roles
+
+If you don't have Owner privileges and API access is not enabled, you'll need to:
+- Contact your account owner to enable API access
+- Or request role elevation from your organization's WPEngine administrator
+
+Learn more: [WPEngine Account Users and Roles](https://wpengine.com/support/users/)
+
+#### Step 2: Enable API Access (if not already enabled)
+
+If your account doesn't have API access enabled yet, an Owner must enable it first.
+
+**Check if API access is enabled**:
+1. Log in to [my.wpengine.com](https://my.wpengine.com)
+2. Click your account name (top right)
+3. Look for **API Access** in the Account menu
+4. If you see "API Access", it's already enabled
+5. If you don't see it, it needs to be enabled
+
+**Enable API access** (Owner only):
+1. In the WPEngine portal, go to **Account Settings**
+2. Find the **API Access** section
+3. Click **Enable API Access** or **Turn On API Access**
+4. Confirm the action
+
+Note: Only account Owners can enable API access. If you're not an Owner and don't see this option, contact your account owner or [WPEngine support](https://help.wpengine.com/requests).
+
+Official guide: [Enabling WP Engine API](https://wpengine.com/support/enabling-wp-engine-api/)
+
+#### Step 3: Generate API Credentials
+
+Once API access is enabled, any eligible user can create their API credentials.
+
+**Create API user credentials**:
 1. Log in to [my.wpengine.com](https://my.wpengine.com)
 2. Click your account name (top right)
 3. Go to **Account** → **API Access**
+4. You'll see API access settings for your user
 
-**Step 2: Create API User** (if needed)
-1. Click "Add User"
-2. Note the username (usually email@company.com)
-3. Set a password
-4. Save credentials securely
+**Your API credentials are**:
+- **Username**: Usually your WPEngine login email (e.g., `your_email@company.com`)
+- **Password**: Set or view in the API Access section
+  - Click "Reset Password" if you need to create or change it
+  - Enter a strong, unique password
+  - Click "Save" or "Update Password"
 
-**Step 3: Get Your Install Name**
+**Important: Save your credentials immediately**
+
+Write down or securely store:
+- Your API username (email)
+- Your API password
+
+You'll need these for Step 4 when configuring Stax. WPEngine may not show the password again after you close the page.
+
+**Get your install name**:
+
+You'll also need to know your WPEngine install name:
 1. In WPEngine portal, go to **Sites**
 2. Click on your site
-3. Note the "Install Name" (e.g., `mysite` or `mycompany`)
+3. Note the **Install Name** (e.g., `mysite` or `mycompany`)
+4. This is different from your domain name
+
+The install name is used to connect to the correct WPEngine environment.
+
+#### Step 4: Verify API Access
+
+Test your credentials to ensure they work before configuring Stax.
+
+**Test API credentials** (optional but recommended):
+
+You can verify your API access using WPEngine's API directly:
+
+```bash
+# Test API authentication
+curl -u "your_email@company.com:your_api_password" \
+  https://api.wpengineapi.com/v1/installs
+```
+
+Expected response: JSON list of your WPEngine installs.
+
+If you see an authentication error:
+- Double-check your username and password
+- Ensure API access is enabled for your account
+- Verify you have access to at least one install
+- Try resetting your API password
+
+**Configure Stax with credentials**:
+
+Once verified, configure Stax (see "Configuring Stax" section below):
+
+```bash
+stax setup
+```
+
+Enter your:
+- **WPEngine API Username**: your_email@company.com
+- **WPEngine API Password**: your_api_password
+- **SSH Key Path**: ~/.ssh/wpengine (covered in next section)
+
+**What if verification fails?**
+
+If you can't authenticate with the API:
+1. Verify API access is enabled (Owner must enable it)
+2. Check that your role has API permissions (not billing-only)
+3. Ensure your password is correct (try resetting it)
+4. Confirm you have access to at least one install
+5. Contact [WPEngine support](https://help.wpengine.com/requests) if issues persist
+
+Common issues are covered in the "Common Credential Issues" section in Troubleshooting.
 
 ### Setting Up SSH Access
 
+SSH (Secure Shell) access allows Stax to securely connect to your WPEngine environments for operations like database pulls and file synchronization. You'll need to generate an SSH key pair and add the public key to your WPEngine account.
+
+Official WPEngine SSH documentation:
+- [SSH Keys for Shell Access](https://wpengine.com/support/ssh-keys-for-shell-access/)
+- [SSH Gateway Guide](https://wpengine.com/support/ssh-gateway/)
+- [Manage SSH Keys in Portal](https://my.wpengine.com/profile/ssh_keys)
+
 **Step 1: Generate SSH Key** (if you don't have one)
+
+Create a dedicated SSH key for WPEngine access:
+
 ```bash
 ssh-keygen -t ed25519 -C "your_email@example.com" -f ~/.ssh/wpengine
 ```
 
-Press Enter for no passphrase (or add one for security).
+When prompted:
+- **Passphrase**: Press Enter for no passphrase (convenient) or enter one (more secure)
+- If you use a passphrase, you'll need to enter it each time or use ssh-agent
+
+This creates two files:
+- `~/.ssh/wpengine` - Private key (keep secret, never share)
+- `~/.ssh/wpengine.pub` - Public key (add to WPEngine)
 
 **Step 2: Add Public Key to WPEngine**
+
+Copy your public key to your clipboard:
+
 ```bash
-# Copy your public key
+# macOS
+cat ~/.ssh/wpengine.pub | pbcopy
+
+# Or just display it to copy manually
 cat ~/.ssh/wpengine.pub
 ```
 
-In WPEngine portal:
-1. Go to **Account** → **SSH Keys**
-2. Click "Add SSH Key"
-3. Paste your public key
-4. Give it a name (e.g., "My Development Machine")
-5. Click "Add"
+Add the key to WPEngine:
+1. Log in to [my.wpengine.com](https://my.wpengine.com)
+2. Go to **Your Profile** → **SSH Keys** (or click [here](https://my.wpengine.com/profile/ssh_keys))
+3. Click **Add SSH Key**
+4. Paste your public key (entire contents of `wpengine.pub`)
+5. Give it a descriptive name (e.g., "MacBook Pro - Development")
+6. Click **Add** or **Save**
+
+The key should appear in your SSH keys list immediately.
 
 **Step 3: Test SSH Connection**
+
+Verify your SSH key works with WPEngine:
+
 ```bash
 ssh -i ~/.ssh/wpengine git@git.wpengine.com info
 ```
 
-You should see a list of your WPEngine installs.
+Expected output: List of your WPEngine installs with their names and IDs.
+
+Example:
+```
+Available repositories:
+  mysite
+  mysite-staging
+  another-project
+```
+
+If you see this list, your SSH key is configured correctly!
+
+#### Troubleshooting SSH Connection Issues
+
+**"Permission denied (publickey)"**
+
+This means WPEngine didn't accept your SSH key.
+
+Solutions:
+1. Verify the public key is added to WPEngine portal
+2. Check you're using the correct private key file:
+   ```bash
+   ssh -i ~/.ssh/wpengine git@git.wpengine.com info
+   ```
+3. Ensure the key format is correct (should start with `ssh-ed25519` or `ssh-rsa`)
+4. Try removing and re-adding the key in WPEngine portal
+5. Generate a new key pair if the key is corrupted
+
+**"Connection timed out" or "Could not resolve hostname"**
+
+This indicates a network connectivity issue.
+
+Solutions:
+1. Check your internet connection
+2. Verify you can reach WPEngine: `ping git.wpengine.com`
+3. Check if a firewall or VPN is blocking SSH (port 22)
+4. Try from a different network
+
+**Key works in portal but not with Stax**
+
+Solutions:
+1. Verify the key path in Stax configuration:
+   ```bash
+   stax config get ssh.key_path
+   ```
+2. Re-run setup with correct path:
+   ```bash
+   stax setup
+   # Enter: ~/.ssh/wpengine
+   ```
+3. Check file permissions (should be 600 for private key):
+   ```bash
+   chmod 600 ~/.ssh/wpengine
+   chmod 644 ~/.ssh/wpengine.pub
+   ```
+
+**Multiple SSH keys for different WPEngine accounts**
+
+If you work with multiple WPEngine accounts, create separate keys:
+
+```bash
+# Account 1
+ssh-keygen -t ed25519 -f ~/.ssh/wpengine_client1
+
+# Account 2
+ssh-keygen -t ed25519 -f ~/.ssh/wpengine_client2
+```
+
+Configure Stax per project:
+```bash
+cd project1
+stax setup
+# SSH Key Path: ~/.ssh/wpengine_client1
+
+cd project2
+stax setup
+# SSH Key Path: ~/.ssh/wpengine_client2
+```
+
+For more SSH help, see [WPEngine SSH Gateway documentation](https://wpengine.com/support/ssh-gateway/).
 
 ### Configuring Stax
 
@@ -676,6 +927,302 @@ Error: Failed to pull database
    stax provider sync uploads
    ```
 
+### Common Credential Issues
+
+This section covers common problems users encounter when setting up or using WPEngine credentials with Stax.
+
+#### Issue 1: API Access Not Enabled
+
+**Symptom**:
+```
+Error: WPEngine API authentication failed
+Error: 401 Unauthorized
+```
+
+Or when checking credentials:
+```bash
+curl -u "email@example.com:password" https://api.wpengineapi.com/v1/installs
+# Returns: 401 Unauthorized
+```
+
+**Cause**: API access is not enabled for your WPEngine account. Only account Owners can enable API access.
+
+**Solution**:
+
+1. **Check if API access is enabled**:
+   - Log in to [my.wpengine.com](https://my.wpengine.com)
+   - Click your account name (top right)
+   - Look for "API Access" in the menu
+   - If you don't see it, API access is not enabled
+
+2. **Enable API access** (Owner only):
+   - Go to **Account Settings**
+   - Find **API Access** section
+   - Click **Enable API Access**
+   - If you're not an Owner, contact your account owner to enable it
+
+3. **Verify your role**:
+   - Go to **Account** → **Users**
+   - Find your username and check your role
+   - Only Owner, Full, and Partial users can use API access
+   - Billing-only users cannot access the API
+
+**Documentation**: [Enabling WP Engine API](https://wpengine.com/support/enabling-wp-engine-api/)
+
+#### Issue 2: Wrong Credential Format
+
+**Symptom**:
+```
+Error: Authentication failed
+Error: Invalid username or password
+```
+
+**Cause**: Using the wrong format for username. Common mistakes include:
+- Using WPEngine account name instead of email
+- Using install name as username
+- Adding extra characters or spaces
+
+**Solution**:
+
+1. **Use the correct username format**:
+   - Username should be your WPEngine login email (e.g., `your_email@company.com`)
+   - NOT your install name
+   - NOT your account name
+   - NOT your domain name
+
+2. **Verify credentials in portal**:
+   - Log in to [my.wpengine.com](https://my.wpengine.com)
+   - Go to **Account** → **API Access**
+   - Your API username is shown there (usually your email)
+   - Reset your API password if needed
+
+3. **Test credentials directly**:
+   ```bash
+   curl -u "your_email@company.com:your_password" \
+     https://api.wpengineapi.com/v1/installs
+   ```
+
+   Should return JSON list of installs, not 401 error.
+
+4. **Re-configure Stax**:
+   ```bash
+   stax setup
+   # Enter email exactly as shown in portal
+   # Copy/paste password to avoid typos
+   ```
+
+#### Issue 3: API User Lacks Access to Specific Install
+
+**Symptom**:
+```
+Error: Install not found
+Error: You do not have access to this install
+```
+
+Or install doesn't appear in API response:
+```bash
+curl -u "email@company.com:password" https://api.wpengineapi.com/v1/installs
+# Install you need is not in the list
+```
+
+**Cause**: Your API user account doesn't have permissions to access the specific WPEngine install you're trying to pull from.
+
+**Solution**:
+
+1. **Check your install access**:
+   - Log in to [my.wpengine.com](https://my.wpengine.com)
+   - Go to **Sites**
+   - Note which installs are listed
+   - You can only access installs visible to you
+
+2. **Verify install name is correct**:
+   ```bash
+   stax config get wpengine.install
+   # Should match exactly (case-sensitive)
+   ```
+
+   In WPEngine portal:
+   - Go to **Sites** → Click your site
+   - Note the exact install name (e.g., `mysite`, not `My Site`)
+
+3. **Request access to the install**:
+   - Contact your WPEngine account owner
+   - Ask them to grant you access to the specific install
+   - Owner can manage user access in **Account** → **Users**
+
+4. **Use a different install**:
+   ```bash
+   # List installs you can access
+   ssh -i ~/.ssh/wpengine git@git.wpengine.com info
+
+   # Update Stax to use accessible install
+   stax config set wpengine.install accessible-install-name
+   ```
+
+**Documentation**: [WPEngine Account Users and Roles](https://wpengine.com/support/users/)
+
+#### Issue 4: Credentials Expired or Revoked
+
+**Symptom**:
+```
+Error: Authentication failed
+Error: Invalid credentials
+```
+
+Previously working credentials suddenly stop working.
+
+**Cause**: API credentials were changed, reset, or revoked in the WPEngine portal by you or another administrator.
+
+**Solution**:
+
+1. **Reset your API password**:
+   - Log in to [my.wpengine.com](https://my.wpengine.com)
+   - Go to **Account** → **API Access**
+   - Click **Reset Password**
+   - Set a new password
+   - Save it securely
+
+2. **Update Stax with new credentials**:
+   ```bash
+   stax setup
+   # Enter your email (username)
+   # Enter new password
+   ```
+
+3. **Verify new credentials work**:
+   ```bash
+   stax doctor
+   # Should show: ✓ WPEngine credentials valid
+   ```
+
+4. **Check if user was deactivated**:
+   - Have an Owner check **Account** → **Users**
+   - Ensure your account is still active
+   - If deactivated, Owner must reactivate it
+
+#### Issue 5: Network or Firewall Blocking API Calls
+
+**Symptom**:
+```
+Error: Connection timeout
+Error: Could not connect to WPEngine API
+Error: Network unreachable
+```
+
+**Cause**: Your network, firewall, VPN, or security software is blocking connections to WPEngine's API or SSH gateway.
+
+**Solution**:
+
+1. **Test basic connectivity**:
+   ```bash
+   # Test API endpoint
+   curl -I https://api.wpengineapi.com
+   # Should return 200 or 401, not connection error
+
+   # Test SSH gateway
+   ping git.wpengine.com
+   # Should show responses, not timeouts
+   ```
+
+2. **Check firewall rules**:
+   - Ensure outbound HTTPS (port 443) is allowed
+   - Ensure outbound SSH (port 22) is allowed
+   - Whitelist these domains:
+     - `api.wpengineapi.com`
+     - `*.wpengine.com`
+     - `*.wpengine.net`
+
+3. **Try different network**:
+   ```bash
+   # Temporarily disable VPN
+   # Try from different WiFi network
+   # Test from phone hotspot
+   stax db pull
+   ```
+
+   If it works on different network, your primary network has restrictions.
+
+4. **Check corporate proxy/VPN**:
+   - Corporate networks often block SSH or restrict API access
+   - Contact your IT department
+   - Request access to WPEngine domains
+   - Or use a VPN that allows these connections
+
+5. **DNS issues**:
+   ```bash
+   # Test DNS resolution
+   nslookup api.wpengineapi.com
+   nslookup git.wpengine.com
+
+   # Try different DNS server temporarily
+   # Google DNS: 8.8.8.8
+   # Cloudflare DNS: 1.1.1.1
+   ```
+
+#### Issue 6: SSH Key Not Recognized
+
+**Symptom**:
+```
+Error: Permission denied (publickey)
+Error: Could not authenticate with SSH key
+```
+
+**Cause**: SSH key is not properly configured in WPEngine or Stax, or the key format is incorrect.
+
+**Solution**:
+
+1. **Verify key is in WPEngine portal**:
+   - Go to [my.wpengine.com/profile/ssh_keys](https://my.wpengine.com/profile/ssh_keys)
+   - Confirm your public key is listed
+   - Key should start with `ssh-ed25519` or `ssh-rsa`
+
+2. **Test SSH key directly**:
+   ```bash
+   ssh -i ~/.ssh/wpengine git@git.wpengine.com info
+   ```
+
+   Should show list of installs, not "Permission denied".
+
+3. **Check key permissions**:
+   ```bash
+   ls -l ~/.ssh/wpengine*
+   # Private key should be: -rw------- (600)
+   # Public key should be: -rw-r--r-- (644)
+
+   # Fix if needed:
+   chmod 600 ~/.ssh/wpengine
+   chmod 644 ~/.ssh/wpengine.pub
+   ```
+
+4. **Verify Stax is using correct key**:
+   ```bash
+   stax config get ssh.key_path
+   # Should show: /Users/yourname/.ssh/wpengine
+
+   # Update if wrong:
+   stax setup
+   # Enter correct path
+   ```
+
+5. **Regenerate key if corrupted**:
+   ```bash
+   # Backup old key
+   mv ~/.ssh/wpengine ~/.ssh/wpengine.old
+   mv ~/.ssh/wpengine.pub ~/.ssh/wpengine.pub.old
+
+   # Generate new key
+   ssh-keygen -t ed25519 -f ~/.ssh/wpengine
+
+   # Add to WPEngine
+   cat ~/.ssh/wpengine.pub
+   # Copy and add to portal
+
+   # Update Stax
+   stax setup
+   ```
+
+**Documentation**: [SSH Keys for Shell Access](https://wpengine.com/support/ssh-keys-for-shell-access/)
+
 ### Wrong Environment
 
 **Symptom**: Pulled wrong environment's data.
@@ -692,6 +1239,105 @@ stax db restore before-pull
 # Pull from correct environment
 stax db pull --environment=production
 ```
+
+### Getting Help with WPEngine Credentials
+
+If you've tried the troubleshooting steps above and still can't get your credentials working, here's how to get help.
+
+#### When to Contact WPEngine Support vs Stax Team
+
+**Contact WPEngine Support for**:
+- Enabling API access (if you're not an Owner)
+- Resetting forgotten API passwords
+- Account permission issues
+- SSH key not being accepted by WPEngine
+- Install access problems
+- Questions about user roles and permissions
+- WPEngine account or billing issues
+
+**Contact Stax Team or Your Team Lead for**:
+- Stax configuration issues
+- How to configure `.stax.yml`
+- Stax command errors
+- Local environment problems
+- Project-specific setup questions
+
+#### WPEngine Support Channels
+
+**WPEngine Support Center**:
+- Browse articles: [wpengine.com/support](https://wpengine.com/support/)
+- Search for credential setup guides
+- Find SSH and API documentation
+
+**WPEngine Ticketing System**:
+- Create a support ticket: [help.wpengine.com/requests](https://help.wpengine.com/requests)
+- Response time: Usually within 24 hours
+- For urgent issues, mention it in the ticket
+
+**When creating a ticket, include**:
+- Your WPEngine account name
+- Your install name
+- Your email address (username)
+- Description of the issue
+- What you've already tried
+- Any error messages (exact text)
+- Screenshots if helpful
+
+**Topics WPEngine can help with**:
+- "API access not showing in my account"
+- "Need API access enabled for my account"
+- "SSH key not working after adding to portal"
+- "Cannot access specific install with my credentials"
+- "User role change request"
+
+#### Common Credential Reset Procedures
+
+**Reset API Password**:
+1. Log in to [my.wpengine.com](https://my.wpengine.com)
+2. Go to **Account** → **API Access**
+3. Click **Reset Password**
+4. Enter new password
+5. Click **Save** or **Update Password**
+6. Update Stax: `stax setup`
+
+**Reset SSH Key**:
+1. Go to [my.wpengine.com/profile/ssh_keys](https://my.wpengine.com/profile/ssh_keys)
+2. Delete old key (if needed)
+3. Generate new key: `ssh-keygen -t ed25519 -f ~/.ssh/wpengine`
+4. Add new public key to portal
+5. Update Stax: `stax setup`
+
+**Request Access to Install**:
+1. Contact your WPEngine account Owner
+2. Provide your email address
+3. Provide the install name you need access to
+4. Owner grants access via **Account** → **Users**
+5. Verify access: `ssh -i ~/.ssh/wpengine git@git.wpengine.com info`
+
+#### Emergency Access Issues
+
+**Locked out of WPEngine portal**:
+- Go to [my.wpengine.com](https://my.wpengine.com)
+- Click "Forgot Password?"
+- Follow password reset email
+
+**No one on your team has Owner access**:
+- Contact [WPEngine support](https://help.wpengine.com/requests)
+- Verify account ownership (may need billing information)
+- Request Owner role assignment
+
+**Entire account suspended or access revoked**:
+- Contact WPEngine support immediately
+- Usually due to billing or security issues
+- Resolve with WPEngine directly
+
+#### Additional Resources
+
+- [WPEngine User Portal](https://my.wpengine.com) - Manage credentials
+- [WPEngine Users Guide](https://wpengine.com/support/users/) - User roles
+- [Enabling API Access](https://wpengine.com/support/enabling-wp-engine-api/) - Setup guide
+- [SSH Key Management](https://wpengine.com/support/ssh-keys-for-shell-access/) - SSH setup
+- [WPEngine API Documentation](https://wpengineapi.com/) - API reference
 
 ---
 
