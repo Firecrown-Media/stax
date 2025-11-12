@@ -4,6 +4,18 @@ import (
 	"fmt"
 )
 
+// Error codes for Stax
+const (
+	ErrCodeConfigNotFound        = "STX-001"
+	ErrCodeCredentialsNotFound   = "STX-002"
+	ErrCodeSSHKeyNotFound        = "STX-003"
+	ErrCodeDDEVNotInstalled      = "STX-101"
+	ErrCodeDDEVNotConfigured     = "STX-102"
+	ErrCodeCommandNotImplemented = "STX-900"
+	ErrCodeInvalidConfig         = "STX-004"
+	ErrCodeWPEngineAPI           = "STX-201"
+)
+
 // Common error types for Stax
 
 // DDEVError represents an error with DDEV operations
