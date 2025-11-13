@@ -634,29 +634,378 @@ When you pull from staging, Stax uses staging domains for search-replace.
 
 ### How Remote Media Proxy Works
 
-Instead of downloading gigabytes of media files, Stax can proxy them from production.
+Instead of downloading gigabytes of media files, Stax can proxy them from production or a CDN without requiring any local storage.
 
-**How it works**:
-1. WordPress requests `/wp-content/uploads/2024/01/image.jpg`
-2. File doesn't exist locally
-3. nginx proxies request to WPEngine/CDN
-4. Image loads in browser
-5. Optionally cached locally
+**The Problem:**
+Production WordPress sites often have 10GB, 50GB, or even hundreds of gigabytes of media files in the `wp-content/uploads/` directory. Downloading all of these files for local development is:
+- Time-consuming (can take hours)
+- Wastes disk space
+- Requires constant re-syncing as new media is added
+- Often unnecessary since you rarely need ALL media files
 
-**Advantages**:
-- No need to download entire uploads directory
-- Saves disk space (GBs)
-- Always shows current production media
-- Faster initial setup
+**The Solution:**
+Stax uses nginx reverse proxy configuration in DDEV to serve media files from remote sources (WPEngine or BunnyCDN) on-demand, only when they're requested by your browser.
 
-**Disadvantages**:
-- Requires internet connection
-- Slightly slower than local files (first load)
-- Can't test local uploads/modifications
+**Request Flow - Step by Step:**
+
+When your browser requests an image like `/wp-content/uploads/2024/01/logo.jpg`, here's what happens:
+
+1. **Browser Request:** Your browser makes an HTTP request to your local site:
+   ```
+   GET https://my-site.ddev.site/wp-content/uploads/2024/01/logo.jpg
+   ```
+
+2. **nginx Receives Request:** The DDEV nginx web server intercepts the request and checks its configuration for the `/wp-content/uploads/` location.
+
+3. **Local Filesystem Check:** nginx uses the `try_files` directive to check if the file exists locally:
+   ```nginx
+   try_files $uri @proxy_media;
+   ```
+   - If the file EXISTS locally, nginx serves it immediately (fast!)
+   - If the file DOES NOT exist, nginx jumps to the `@proxy_media` location block
+
+4. **Proxy to Primary Source (CDN):** nginx forwards the request to your primary remote source (BunnyCDN):
+   ```nginx
+   proxy_pass https://mysite.b-cdn.net/wp-content/uploads/2024/01/logo.jpg
+   ```
+   - Adds proper headers (`X-Real-IP`, `X-Forwarded-For`)
+   - Verifies SSL (or skips verification for development)
+   - Sets `X-Proxy-Source: cdn` header for debugging
+
+5. **CDN Responds:** If BunnyCDN has the file, it returns the image with HTTP 200 status.
+
+6. **Fallback to WPEngine (if CDN fails):** If BunnyCDN returns 404 (file not found), nginx tries the fallback:
+   ```nginx
+   error_page 404 = @wpengine_fallback;
+   ```
+   - nginx makes a second request to WPEngine directly
+   - Sets proper `Host` header for WPEngine
+   - Sets `X-Proxy-Source: wpengine` header
+
+7. **Optional Caching:** If caching is enabled, nginx stores the proxied file:
+   - Caches successful responses (HTTP 200) for the configured TTL (e.g., 30 days)
+   - Caches 404 responses for 1 minute (to avoid repeated failed requests)
+   - Subsequent requests for the same file are served from cache (instant!)
+   - Cache is stored in DDEV's web container at `/var/cache/nginx/media`
+
+8. **Response to Browser:** The image is returned to your browser, which displays it normally.
+
+**Visual Flow Diagram:**
+
+```
+Browser Request
+       ↓
+[nginx @ localhost:443]
+       ↓
+[Check local file: try_files $uri]
+       ↓
+   File exists? ───YES──→ [Serve from local disk] → Browser
+       ↓ NO
+       ↓
+[@proxy_media: Try CDN]
+       ↓
+[proxy_pass to BunnyCDN]
+       ↓
+   CDN has file? ───YES──→ [Return image + cache it] → Browser
+       ↓ NO (404)
+       ↓
+[@wpengine_fallback]
+       ↓
+[proxy_pass to WPEngine]
+       ↓
+   WPE has file? ───YES──→ [Return image + cache it] → Browser
+       ↓ NO
+       ↓
+[Return 404 to Browser]
+```
+
+**Performance Characteristics:**
+
+- **First Request (Cold):** 100-500ms (depends on CDN/WPEngine response time)
+- **Cached Request:** <10ms (served from nginx cache)
+- **Local File:** <1ms (served from disk)
+- **Cache Hit Rate:** Typically 95%+ after initial page load
+
+**Advantages:**
+- No need to download entire uploads directory (saves hours of initial setup)
+- Saves significant disk space (10GB-100GB+)
+- Always shows current production media (no sync needed)
+- Faster project initialization
+- Works transparently - WordPress doesn't know the difference
+- Can selectively download files you need to modify (hybrid approach)
+
+**Disadvantages:**
+- Requires internet connection for first load of each file
+- Slightly slower than local files on first request (cached after that)
+- Can't test local upload functionality without disabling proxy
+- Debugging media upload issues requires turning proxy off
+- May not work well on slow/unreliable internet connections
+
+### Technical Implementation Details
+
+**How Stax Configures DDEV nginx:**
+
+When you run `stax media setup-proxy`, Stax generates an nginx configuration file that DDEV automatically loads.
+
+**Configuration Location:**
+- **File:** `.ddev/nginx_full/media-proxy.conf`
+- **Cache Config:** `.ddev/nginx_full/cache-config.conf` (if caching enabled)
+- **Loaded by:** DDEV automatically includes all `.conf` files in `nginx_full/` directory
+
+**nginx Configuration Structure:**
+
+The generated configuration contains three main location blocks:
+
+1. **Primary Location Block** (`/wp-content/uploads/`):
+   ```nginx
+   location ~ ^/wp-content/uploads/(.*)$ {
+       try_files $uri @proxy_media;
+   }
+   ```
+   This intercepts all requests to the uploads directory and tries the local file first.
+
+2. **Proxy Location** (`@proxy_media`):
+   ```nginx
+   location @proxy_media {
+       proxy_pass https://mysite.b-cdn.net$request_uri;
+       proxy_intercept_errors on;
+       error_page 404 = @wpengine_fallback;
+
+       # Caching
+       proxy_cache media_cache;
+       proxy_cache_valid 200 30d;
+       proxy_cache_key "$scheme$request_method$host$request_uri";
+
+       # Headers
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       add_header X-Cache-Status $upstream_cache_status;
+       add_header X-Proxy-Source "cdn";
+   }
+   ```
+
+3. **Fallback Location** (`@wpengine_fallback`):
+   ```nginx
+   location @wpengine_fallback {
+       proxy_pass https://mysite.wpengine.com$request_uri;
+       proxy_set_header Host mysite.wpengine.com;
+       add_header X-Proxy-Source "wpengine";
+   }
+   ```
+
+**Cache Configuration:**
+
+If caching is enabled, a separate cache zone is defined:
+
+```nginx
+proxy_cache_path /var/cache/nginx/media
+    levels=1:2
+    keys_zone=media_cache:10m
+    max_size=10g
+    inactive=30d;
+```
+
+**Cache Parameters Explained:**
+- `levels=1:2`: Two-level directory hierarchy (prevents too many files in one directory)
+- `keys_zone=media_cache:10m`: 10MB shared memory for cache keys (~80,000 keys)
+- `max_size=10g`: Maximum cache size of 10GB
+- `inactive=30d`: Delete cached files not accessed for 30 days
+
+**Verifying nginx Proxy is Working:**
+
+There are several ways to verify the media proxy is functioning correctly:
+
+**1. Check nginx configuration exists:**
+```bash
+ls -la .ddev/nginx_full/
+# Should show: media-proxy.conf
+```
+
+**2. Validate nginx syntax:**
+```bash
+stax media test
+# Runs nginx -t validation inside DDEV container
+```
+
+**3. Check browser DevTools:**
+- Open your site in browser
+- Open DevTools → Network tab
+- Navigate to a page with images
+- Click on an image request
+- Look at Response Headers:
+  ```
+  X-Proxy-Source: cdn
+  X-Cache-Status: HIT  (or MISS on first request)
+  ```
+
+**4. Test manually with curl:**
+```bash
+# Test that proxy is working
+curl -I https://my-site.ddev.site/wp-content/uploads/2024/01/test.jpg
+
+# Look for these headers:
+# X-Proxy-Source: cdn
+# X-Cache-Status: HIT or MISS
+```
+
+**5. Check cache directory:**
+```bash
+# SSH into DDEV web container
+ddev ssh
+
+# List cached files
+ls -lh /var/cache/nginx/media/
+
+# Check cache size
+du -sh /var/cache/nginx/media/
+```
+
+**How the Cache Works (Deep Dive):**
+
+The nginx proxy cache is a local disk-based cache stored inside the DDEV web container.
+
+**Cache Key Generation:**
+```nginx
+proxy_cache_key "$scheme$request_method$host$request_uri";
+```
+
+Example key for: `https://my-site.ddev.site/wp-content/uploads/2024/01/logo.jpg`
+```
+httpsGETmy-site.ddev.site/wp-content/uploads/2024/01/logo.jpg
+```
+
+This is hashed (MD5) and stored in the cache directory structure.
+
+**Cache Directory Structure:**
+```
+/var/cache/nginx/media/
+├── 1/
+│   └── 2f/
+│       └── a1b2c3d4e5f6... (cached file)
+├── 3/
+│   └── 4a/
+│       └── b2c3d4e5f6a1... (cached file)
+└── ...
+```
+
+**Cache States:**
+
+When a request is made, the cache can be in one of several states:
+
+- **MISS:** File not in cache, fetched from remote source
+- **HIT:** File served from cache
+- **STALE:** Cached file expired, but served while revalidating
+- **UPDATING:** Cache is being updated in background
+- **REVALIDATED:** Cached file still valid after checking origin
+- **BYPASS:** Cache bypassed for this request
+
+**Cache Purging:**
+
+To clear the cache manually:
+
+```bash
+# SSH into DDEV container
+ddev ssh
+
+# Clear entire cache
+rm -rf /var/cache/nginx/media/*
+
+# Or clear specific file
+rm -rf /var/cache/nginx/media/1/2f/a1b2c3d4e5f6...
+
+# Exit container
+exit
+
+# Restart nginx to ensure clean state
+stax restart
+```
+
+**Cache Persistence:**
+
+Note: The cache is stored INSIDE the DDEV web container, so:
+- Cache persists between `stax stop` and `stax start`
+- Cache is LOST when you run `stax stop --remove-data` or `ddev delete`
+- Cache is project-specific (each DDEV project has its own cache)
 
 ### Enabling Remote Media Proxy
 
-**In `.stax.yml`**:
+You can enable the media proxy using either the CLI commands or by manually editing configuration files.
+
+**Method 1: Using Stax Commands (Recommended)**
+
+The easiest way to set up media proxy is using the `stax media` commands:
+
+```bash
+# Setup proxy with automatic WPEngine detection
+stax media setup-proxy
+
+# Setup with BunnyCDN
+stax media setup-proxy --cdn=https://mysite.b-cdn.net
+
+# Setup without caching (always fetch from remote)
+stax media setup-proxy --no-cache
+
+# Setup with custom cache TTL
+stax media setup-proxy --cache-ttl=7d
+```
+
+**What `setup-proxy` does:**
+1. Reads WPEngine configuration from `.stax.yml` (if available)
+2. Generates nginx configuration in `.ddev/nginx_full/media-proxy.conf`
+3. Validates nginx syntax
+4. Restarts DDEV to apply changes
+5. Shows configuration summary
+
+**Expected output:**
+```
+Setting Up Media Proxy
+✓ Using BunnyCDN from config: https://mysite.b-cdn.net
+✓ Using WPEngine from config: https://mysite.wpengine.com
+✓ Generating nginx media proxy configuration
+✓ Validating nginx configuration
+✓ DDEV restarted
+
+Media proxy configured successfully!
+
+Configuration Summary
+  Primary Source:  https://mysite.b-cdn.net
+  Fallback Source: https://mysite.wpengine.com
+  Caching:         ✓ Enabled
+  Cache TTL:       30d
+  Config File:     .ddev/nginx_full/media-proxy.conf
+
+Next steps:
+  1. Test the proxy: stax media test
+  2. Check status: stax media status
+  3. Visit your site and verify media loads correctly
+```
+
+**Check proxy status:**
+```bash
+stax media status
+```
+
+Shows:
+- Whether proxy is enabled in `.stax.yml`
+- Whether nginx config exists
+- DDEV status
+- Cache status and size
+
+**Test proxy configuration:**
+```bash
+stax media test
+```
+
+Validates:
+- nginx configuration syntax
+- DDEV is running
+- Configuration files exist
+- Provides manual verification steps
+
+**Method 2: Manual Configuration in `.stax.yml`**
+
+You can also configure the media proxy by editing your `.stax.yml` file:
+
 ```yaml
 media:
   proxy:
@@ -665,13 +1014,20 @@ media:
     # Or: https://mysite.wpengine.com
     fallback_url: https://mysite.wpengine.com
     cache_locally: true
-    cache_duration: 7d
+    cache_duration: 30d
 ```
 
-**Restart to apply**:
+After editing `.stax.yml`, you still need to generate the nginx configuration:
+
 ```bash
+# Generate nginx config from .stax.yml
+stax media setup-proxy
+
+# Restart to apply
 stax restart
 ```
+
+**Important:** The `.stax.yml` configuration alone does NOT enable the proxy. You must run `stax media setup-proxy` to generate the nginx configuration files that DDEV uses.
 
 ### Configuration Options
 

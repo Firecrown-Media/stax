@@ -385,6 +385,125 @@ stax wp -- <command>
 
 ---
 
+### Working with Remote Media (No Download Needed)
+
+One of Stax's most powerful features is the ability to use production media files without downloading them to your local machine.
+
+**The Problem:**
+Production WordPress sites often have tens or hundreds of gigabytes of media files (images, videos, PDFs, etc.) in the `wp-content/uploads/` directory. Downloading all of these for local development:
+- Takes hours or even days
+- Wastes valuable disk space
+- Requires constant re-syncing as new media is added
+- Is often unnecessary since you rarely modify most media files
+
+**The Solution: Media Proxy**
+
+Stax can configure nginx to automatically fetch media files from WPEngine or a CDN on-demand, only when your browser requests them. This is called "media proxying."
+
+**How it works:**
+1. Your browser requests an image from your local site
+2. nginx checks if the file exists locally
+3. If not found locally, nginx transparently fetches it from WPEngine/CDN
+4. The image displays normally in your browser
+5. Optionally, the file is cached locally for faster subsequent loads
+
+**Setting up media proxy:**
+
+```bash
+# Setup media proxy (uses WPEngine from .stax.yml)
+stax media setup-proxy
+
+# Or specify a CDN URL
+stax media setup-proxy --cdn=https://mysite.b-cdn.net
+
+# With custom cache duration
+stax media setup-proxy --cache-ttl=7d
+```
+
+**Expected output:**
+```
+Setting Up Media Proxy
+✓ Using BunnyCDN from config: https://mysite.b-cdn.net
+✓ Using WPEngine from config: https://mysite.wpengine.com
+✓ Generating nginx media proxy configuration
+✓ DDEV restarted
+
+Media proxy configured successfully!
+
+Configuration Summary
+  Primary Source:  https://mysite.b-cdn.net
+  Fallback Source: https://mysite.wpengine.com
+  Caching:         ✓ Enabled
+  Cache TTL:       30d
+```
+
+**Check status:**
+```bash
+stax media status
+```
+
+**Test it works:**
+```bash
+stax media test
+```
+
+**Verify in browser:**
+1. Visit your local site
+2. Open DevTools → Network tab
+3. Navigate to a page with images
+4. Click on an image request
+5. Look for `X-Proxy-Source: cdn` or `X-Proxy-Source: wpengine` in response headers
+6. First load shows `X-Cache-Status: MISS`
+7. Subsequent loads show `X-Cache-Status: HIT` (served from cache)
+
+**When to use media proxy:**
+- You don't need to modify media files locally
+- Your uploads directory is very large (10GB+)
+- You have a reliable internet connection
+- You want faster project setup
+- You want to save disk space
+
+**When to download files instead:**
+- You need to test WordPress upload functionality
+- You're working offline
+- You need to modify specific media files
+- Your internet connection is slow/unreliable
+
+**Hybrid approach:**
+
+You can use media proxy AND selectively download specific files you need:
+
+```bash
+# Enable media proxy for most files
+stax media setup-proxy
+
+# Download specific directory you need to modify
+rsync -avz user@wpengine:/path/to/uploads/2024/11/ ./wp-content/uploads/2024/11/
+```
+
+nginx will serve the local files when they exist, and proxy everything else.
+
+**Disabling media proxy:**
+
+If you later decide to download all media and stop using the proxy:
+
+```bash
+# Download all media files
+stax provider sync uploads
+
+# Or manually configure in .stax.yml
+# Set media.proxy.enabled: false
+# Then restart
+stax restart
+```
+
+**Learn more:**
+- Full documentation: [MEDIA_PROXY.md](./MEDIA_PROXY.md)
+- WPEngine integration: [WPENGINE.md](./WPENGINE.md#remote-media)
+- Technical details: nginx configuration in `.ddev/nginx_full/media-proxy.conf`
+
+---
+
 ### Stopping Environment
 
 When you're done for the day:
