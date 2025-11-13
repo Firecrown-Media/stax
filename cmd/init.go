@@ -666,11 +666,34 @@ func pullDatabase(projectDir string, cfg *config.Config) error {
 	ui.Section("Pulling Database")
 	ui.Info("This may take several minutes...")
 
-	// TODO: Integrate with existing database pull functionality
-	// For now, just show a message
-	ui.Warning("Database pull functionality will be integrated in the next iteration")
-	ui.Info("You can pull the database manually by running: stax db pull")
+	// Verify WPEngine configuration exists
+	if cfg.WPEngine.Install == "" {
+		return fmt.Errorf("WPEngine install not configured")
+	}
 
+	// Save current directory and change to project directory
+	originalDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(projectDir); err != nil {
+		return fmt.Errorf("failed to change to project directory: %w", err)
+	}
+
+	// Set the environment for database pull
+	dbEnvironment = cfg.WPEngine.Environment
+	if dbEnvironment == "" {
+		dbEnvironment = "production"
+	}
+
+	// Call the existing database pull function
+	if err := runDBPull(nil, nil); err != nil {
+		return fmt.Errorf("database pull failed: %w\n\nYou can try manually: stax db pull --environment=%s", err, dbEnvironment)
+	}
+
+	ui.Success("Database pulled successfully")
 	return nil
 }
 
@@ -678,11 +701,38 @@ func pullFiles(projectDir string, cfg *config.Config) error {
 	ui.Section("Pulling Files")
 	ui.Info("This may take several minutes...")
 
-	// TODO: Integrate with existing file pull functionality
-	// For now, just show a message
-	ui.Warning("File pull functionality will be integrated in the next iteration")
-	ui.Info("You can pull files manually by running: stax files pull")
+	// Verify WPEngine configuration exists
+	if cfg.WPEngine.Install == "" {
+		return fmt.Errorf("WPEngine install not configured")
+	}
 
+	// Save current directory and change to project directory
+	originalDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(projectDir); err != nil {
+		return fmt.Errorf("failed to change to project directory: %w", err)
+	}
+
+	// Set the environment for file pull
+	filesEnvironment = cfg.WPEngine.Environment
+	if filesEnvironment == "" {
+		filesEnvironment = "production"
+	}
+
+	// Exclude uploads by default (use media proxy instead)
+	filesExcludeUploads = true
+	ui.Info("Excluding uploads directory (configure media proxy for remote media)")
+
+	// Call the existing file pull function
+	if err := runFilesPull(nil, nil); err != nil {
+		return fmt.Errorf("file pull failed: %w\n\nYou can try manually: stax files pull --environment=%s --exclude-uploads", err, filesEnvironment)
+	}
+
+	ui.Success("Files pulled successfully")
 	return nil
 }
 
