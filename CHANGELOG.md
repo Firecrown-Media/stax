@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/Firecrown-Media/stax/compare/v2.2.0...v2.3.0) (2025-11-13)
+
+
+### Features
+
+* trigger release for Phase 6-11 completion ([4edea49](https://github.com/Firecrown-Media/stax/commit/4edea4919cf454e961b58c73cfd316bc4e777239))
+
 ## [2.2.0](https://github.com/Firecrown-Media/stax/compare/v2.1.1...v2.2.0) (2025-11-12)
 
 
