@@ -208,6 +208,23 @@ func runFullInit(projectDir string) error {
 			return err
 		}
 		spinner.Success("DDEV started successfully")
+
+		// Step 8a: Download WordPress core if needed
+		if !hasWordPressCore(projectDir) {
+			ui.Section("Setting Up WordPress")
+			if err := downloadWordPressCore(projectDir, cfg); err != nil {
+				ui.Warning(fmt.Sprintf("Failed to download WordPress core: %v", err))
+				ui.Info("You can download manually: ddev wp core download")
+			}
+		}
+
+		// Step 8b: Generate wp-config.php if needed
+		if !hasWordPressConfig(projectDir) {
+			if err := generateWordPressConfig(projectDir, cfg); err != nil {
+				ui.Warning(fmt.Sprintf("Failed to generate wp-config.php: %v", err))
+				ui.Info("You can create manually: ddev wp config create --dbname=db --dbuser=db --dbpass=db --dbhost=db")
+			}
+		}
 	}
 
 	// Step 9: Pull database if requested
@@ -660,6 +677,108 @@ func shouldPullFiles(cfg *config.Config) bool {
 	}
 
 	return false
+}
+
+// hasWordPressCore checks if WordPress core files are present
+func hasWordPressCore(projectDir string) bool {
+	// Check for wp-includes/version.php as indicator of WordPress core
+	versionPath := filepath.Join(projectDir, "public", "wp-includes", "version.php")
+	if _, err := os.Stat(versionPath); err == nil {
+		return true
+	}
+
+	// Also check for wp-load.php in public directory
+	loadPath := filepath.Join(projectDir, "public", "wp-load.php")
+	if _, err := os.Stat(loadPath); err == nil {
+		return true
+	}
+
+	return false
+}
+
+// downloadWordPressCore downloads WordPress core files via DDEV
+func downloadWordPressCore(projectDir string, cfg *config.Config) error {
+	ui.Info("Downloading WordPress core...")
+
+	// Check if DDEV is running
+	mgr := ddev.NewManager(projectDir)
+	running, err := mgr.IsRunning()
+	if err != nil || !running {
+		return fmt.Errorf("DDEV must be running to download WordPress core")
+	}
+
+	// Determine version to download
+	version := "latest"
+	if cfg.WordPress.Version != "" && cfg.WordPress.Version != "latest" {
+		version = cfg.WordPress.Version
+	}
+
+	// Build WP-CLI command
+	var args []string
+	if version == "latest" {
+		args = []string{"wp", "core", "download"}
+	} else {
+		args = []string{"wp", "core", "download", fmt.Sprintf("--version=%s", version)}
+	}
+
+	// Execute download
+	spinner := ui.NewSpinner("Downloading WordPress core...")
+	spinner.Start()
+
+	if err := mgr.Exec(args, nil); err != nil {
+		spinner.Error("Failed to download WordPress core")
+		return err
+	}
+
+	spinner.Success("WordPress core downloaded successfully")
+	return nil
+}
+
+// hasWordPressConfig checks if wp-config.php exists
+func hasWordPressConfig(projectDir string) bool {
+	// Check for wp-config.php in public directory
+	configPath := filepath.Join(projectDir, "public", "wp-config.php")
+	_, err := os.Stat(configPath)
+	return err == nil
+}
+
+// generateWordPressConfig creates wp-config.php via DDEV
+func generateWordPressConfig(projectDir string, cfg *config.Config) error {
+	ui.Info("Generating wp-config.php...")
+
+	// Check if DDEV is running
+	mgr := ddev.NewManager(projectDir)
+	running, err := mgr.IsRunning()
+	if err != nil || !running {
+		return fmt.Errorf("DDEV must be running to generate wp-config.php")
+	}
+
+	// DDEV database defaults
+	dbName := "db"
+	dbUser := "db"
+	dbPass := "db"
+	dbHost := "db"
+
+	// Build WP-CLI command to create wp-config.php
+	args := []string{
+		"wp", "config", "create",
+		fmt.Sprintf("--dbname=%s", dbName),
+		fmt.Sprintf("--dbuser=%s", dbUser),
+		fmt.Sprintf("--dbpass=%s", dbPass),
+		fmt.Sprintf("--dbhost=%s", dbHost),
+	}
+
+	// Execute config creation
+	spinner := ui.NewSpinner("Generating wp-config.php...")
+	spinner.Start()
+
+	if err := mgr.Exec(args, nil); err != nil {
+		spinner.Error("Failed to generate wp-config.php")
+		return err
+	}
+
+	spinner.Success("wp-config.php generated successfully")
+	return nil
 }
 
 func pullDatabase(projectDir string, cfg *config.Config) error {
