@@ -42,7 +42,7 @@ Stax is a command-line tool that makes WordPress development simple and consiste
 - **Single Site & Multisite** - Full support for standard WordPress and multisite networks
 - **Automatic Database Sync** - Pull databases from WPEngine with automatic URL replacement
 - **Multisite Made Easy** - Full support for subdomain and subdirectory multisite (when needed)
-- **Remote Media Proxying** - Access production media without downloading gigabytes of files
+- **Remote Media Proxying** - Serve production media from WPEngine or CDN without downloading files. nginx automatically fetches images on-demand, saving 10GB-200GB of disk space and hours of sync time. Optional caching for fast performance.
 - **Safe Database Snapshots** - Create restore points before risky operations
 - **Team-Friendly** - Share configuration files via Git, everyone gets identical environments
 - **Build Automation** - Automatically runs Composer, npm, and build scripts
@@ -228,6 +228,7 @@ stax lint                     # Run code linters
 ### Workflows
 - [Working with Multisite](./docs/MULTISITE.md) - Multisite-specific features
 - [WPEngine Integration](./docs/WPENGINE.md) - WPEngine features and setup
+- [Media Proxy Guide](./docs/MEDIA_PROXY.md) - Serve remote media without downloads
 - [Real-World Examples](./docs/EXAMPLES.md) - Common scenarios and workflows
 
 ### Reference
