@@ -4,21 +4,21 @@
 
 Stax streamlines your WordPress development workflow - from environment setup to database syncing - so you can focus on building great sites instead of wrestling with configuration.
 
-> **🎉 v2.0.0 Release - Complete Environment Management**
-> Stax now provides complete WordPress environment management!
+> **🎉 v2.5.0 Release - One-Command WordPress Setup**
+> Stax now provides complete one-command WordPress setup from empty directory to running site!
 >
-> **Implemented in v2.0.0:**
-> - ✓ Fully functional `start`, `stop`, `restart`, `status` commands
-> - ✓ Comprehensive `doctor` diagnostics
-> - ✓ New `validate` command for configuration checking
-> - ✓ Enhanced error messages with actionable solutions
-> - ✓ Works with DDEV-only projects (no .stax.yml required)
-> - ✓ Foundation packages: prompts, git operations, system checks
+> **Implemented in v2.5.0:**
+> - ✓ Automatic WordPress core download during init
+> - ✓ Automatic wp-config.php generation with correct credentials
+> - ✓ Multisite configuration handled automatically
+> - ✓ Database credentials extracted from DDEV
+> - ✓ WordPress security salts generated automatically
+> - ✓ Go from empty directory to running WordPress in one command
 >
-> **Coming Soon:**
-> - Full `init` command implementation
-> - Enhanced multisite support
-> - Advanced WPEngine sync features
+> **Previous releases:**
+> - v2.0.0: Complete environment management (start, stop, restart, status, doctor)
+> - v2.2.0: Media proxy support and WPEngine discovery
+> - v2.3.0: Complete init integration with file sync
 
 ---
 
@@ -38,10 +38,12 @@ Stax is a command-line tool that makes WordPress development simple and consiste
 
 ## Key Features
 
-- **One-Command Setup** - Go from zero to running WordPress in under 5 minutes
+- **One-Command Setup** - Go from empty directory to running WordPress in one command
+- **Automatic WordPress Download** - WordPress core automatically downloaded during init
+- **Automatic Configuration** - wp-config.php generated with correct database settings
 - **Single Site & Multisite** - Full support for standard WordPress and multisite networks
+- **Multisite Ready** - Multisite networks configured automatically with proper constants
 - **Automatic Database Sync** - Pull databases from WPEngine with automatic URL replacement
-- **Multisite Made Easy** - Full support for subdomain and subdirectory multisite (when needed)
 - **Remote Media Proxying** - Serve production media from WPEngine or CDN without downloading files. nginx automatically fetches images on-demand, saving 10GB-200GB of disk space and hours of sync time. Optional caching for fast performance.
 - **Safe Database Snapshots** - Create restore points before risky operations
 - **Team-Friendly** - Share configuration files via Git, everyone gets identical environments
@@ -56,14 +58,15 @@ Get started with Stax in under 5 minutes:
 # 1. Install Stax
 brew install firecrown-media/tap/stax
 
-# 2. Set up credentials (optional)
-stax setup
-
-# 3. Initialize your project
+# 2. Initialize your project (one command!)
 mkdir my-wordpress-site && cd my-wordpress-site
-stax init
+stax init --start
 
-# 4. Your environment is now running!
+# 3. Your WordPress site is now running!
+# - WordPress core downloaded automatically ✓
+# - Database configured automatically ✓
+# - Site accessible at https://my-wordpress-site.ddev.site ✓
+
 stax status
 ```
 
@@ -261,11 +264,13 @@ When you run `stax init`, here's what happens:
 3. Detects PHP/MySQL versions from WPEngine
 4. Generates DDEV configuration
 5. Starts Docker containers
-6. Installs Composer and npm dependencies
-7. Runs your build scripts
-8. Pulls the database from WPEngine
-9. Imports and runs search-replace automatically
-10. Displays your local URLs
+6. Downloads WordPress core automatically
+7. Generates wp-config.php with database credentials
+8. Installs Composer and npm dependencies
+9. Runs your build scripts
+10. Pulls the database from WPEngine
+11. Imports and runs search-replace automatically
+12. Displays your local URLs
 
 Total time: 2-5 minutes
 ```

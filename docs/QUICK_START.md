@@ -99,13 +99,13 @@ Total: 3 installs
 
 **Skip this step if you already know your install name**.
 
-### Step 4: Initialize Your Project
+### Step 4: Initialize Your Project (One Command!)
 
 ```bash
-stax init
+stax init --start
 ```
 
-Stax will now guide you through an interactive setup. Here's what you'll be asked:
+Stax will now guide you through an interactive setup and automatically start your environment. Here's what you'll be asked:
 
 **Project name**: (defaults to directory name)
 ```
@@ -185,11 +185,13 @@ Stax will now:
 2. Detect PHP/MySQL versions from WPEngine
 3. Generate DDEV configuration
 4. Start Docker containers
-5. Install dependencies (Composer + npm)
-6. Run build scripts
-7. Pull database from WPEngine
-8. Import and configure the database
-9. Run search-replace for all sites
+5. Download WordPress core automatically
+6. Generate wp-config.php with database credentials
+7. Install dependencies (Composer + npm)
+8. Run build scripts
+9. Pull database from WPEngine
+10. Import and configure the database
+11. Run search-replace for all sites
 
 **Expected output** (this takes 2-5 minutes):
 ```
@@ -208,6 +210,12 @@ Stax will now:
   Web: https://my-multisite.local
   Database: MySQL 8.0
   MailHog: http://my-multisite.local:8025
+✓ Downloading WordPress core
+  Version: Latest (6.4.2)
+✓ Generating wp-config.php
+  Database credentials configured
+  Security salts generated
+  Multisite constants added
 ✓ Installing Composer dependencies
   Installed 45 packages
 ✓ Installing NPM dependencies
@@ -243,6 +251,8 @@ Next steps:
 WordPress Admin:
   URL:      https://my-multisite.local/wp-admin
   Users:    Your production users (unchanged)
+
+Everything is configured and ready to use - no manual setup required!
 ```
 
 ### Step 5: Access Your Site
@@ -318,13 +328,13 @@ Let's understand what Stax set up for you:
 ├── .stax.yml              # Your project configuration
 ├── .ddev/                 # DDEV configuration (auto-generated)
 │   └── config.yaml
-├── wp-admin/              # WordPress core
+├── wp-admin/              # WordPress core (downloaded automatically)
 ├── wp-content/            # Your themes and plugins
 │   ├── themes/
 │   ├── plugins/
 │   ├── mu-plugins/
 │   └── uploads/          # Media (proxied from production)
-├── wp-config.php          # WordPress configuration
+├── wp-config.php          # WordPress configuration (generated automatically)
 ├── composer.json          # PHP dependencies
 ├── package.json           # JavaScript dependencies
 └── ... (your other files)
