@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/Firecrown-Media/stax/compare/v2.3.0...v2.4.0) (2025-11-15)
+
+
+### Features
+
+* **db:** implement automatic database import and URL search-replace ([#62](https://github.com/Firecrown-Media/stax/issues/62)) ([c8bc93f](https://github.com/Firecrown-Media/stax/commit/c8bc93f6f881deaff3c8fb3ca50a7614c201fb00))
+
 ## [2.3.0](https://github.com/Firecrown-Media/stax/compare/v2.2.0...v2.3.0) (2025-11-13)
 
 
