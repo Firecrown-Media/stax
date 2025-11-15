@@ -85,6 +85,12 @@ required information. You can skip prompts by providing all flags.`,
     --start \
     --pull-db
 
+  # Initialize with specific WordPress version
+  stax init --start --wordpress-version=6.4.2
+
+  # Skip WordPress core download
+  stax init --start --skip-wordpress
+
   # Generate template configuration
   stax init --template
 
@@ -720,9 +726,7 @@ func hasWordPressCore(projectDir string) bool {
 }
 
 // downloadWordPressCore downloads WordPress core files via DDEV
-func downloadWordPressCore(projectDir string, cfg *config.Config) error {
-	ui.Info("Downloading WordPress core...")
-
+func downloadWordPressCore(projectDir string, version string) error {
 	// Check if DDEV is running
 	mgr := ddev.NewManager(projectDir)
 	running, err := mgr.IsRunning()
@@ -730,18 +734,13 @@ func downloadWordPressCore(projectDir string, cfg *config.Config) error {
 		return fmt.Errorf("DDEV must be running to download WordPress core")
 	}
 
-	// Determine version to download
-	version := "latest"
-	if cfg.WordPress.Version != "" && cfg.WordPress.Version != "latest" {
-		version = cfg.WordPress.Version
-	}
-
 	// Build WP-CLI command
-	var args []string
-	if version == "latest" {
-		args = []string{"wp", "core", "download"}
+	args := []string{"wp", "core", "download"}
+	if version != "" && version != "latest" {
+		args = append(args, fmt.Sprintf("--version=%s", version))
+		ui.Info("Downloading WordPress %s...", version)
 	} else {
-		args = []string{"wp", "core", "download", fmt.Sprintf("--version=%s", version)}
+		ui.Info("Downloading latest WordPress...")
 	}
 
 	// Execute download
@@ -765,9 +764,9 @@ func hasWordPressConfig(projectDir string) bool {
 	return err == nil
 }
 
-// generateWordPressConfig creates wp-config.php via DDEV
+// generateWordPressConfig creates wp-config.php via DDEV and configures multisite if needed
 func generateWordPressConfig(projectDir string, cfg *config.Config) error {
-	ui.Info("Generating wp-config.php...")
+	ui.Section("Generating wp-config.php")
 
 	// Check if DDEV is running
 	mgr := ddev.NewManager(projectDir)
@@ -789,10 +788,11 @@ func generateWordPressConfig(projectDir string, cfg *config.Config) error {
 		fmt.Sprintf("--dbuser=%s", dbUser),
 		fmt.Sprintf("--dbpass=%s", dbPass),
 		fmt.Sprintf("--dbhost=%s", dbHost),
+		"--skip-check", // Skip DB connection check (DB may not have tables yet)
 	}
 
 	// Execute config creation
-	spinner := ui.NewSpinner("Generating wp-config.php...")
+	spinner := ui.NewSpinner("Creating wp-config.php...")
 	spinner.Start()
 
 	if err := mgr.Exec(args, nil); err != nil {
@@ -800,10 +800,64 @@ func generateWordPressConfig(projectDir string, cfg *config.Config) error {
 		return err
 	}
 
-	spinner.Success("wp-config.php generated successfully")
+	spinner.Success("wp-config.php created successfully")
+
+	// For multisite, add additional configuration
+	if isMultisite(cfg.Project.Type) {
+		if err := configureMultisite(projectDir, cfg, mgr); err != nil {
+			ui.Warning(fmt.Sprintf("Multisite configuration warning: %v", err))
+			ui.Info("You may need to manually configure multisite in wp-config.php")
+		}
+	}
+
+	ui.Success("wp-config.php generated successfully")
 	return nil
 }
 
+// configureMultisite adds multisite constants to wp-config.php
+func configureMultisite(projectDir string, cfg *config.Config, mgr *ddev.Manager) error {
+	ui.Info("Adding multisite configuration...")
+
+	// Determine subdomain vs subdirectory
+	subdomainInstall := "true"
+	if cfg.Project.Mode == "subdirectory" {
+		subdomainInstall = "false"
+	}
+
+	// Get the domain from config
+	domain := cfg.Network.Domain
+	if domain == "" {
+		domain = fmt.Sprintf("%s.ddev.site", cfg.Project.Name)
+	}
+
+	// Add multisite constants via wp-cli
+	multisiteConstants := []struct {
+		name  string
+		value string
+		raw   bool
+	}{
+		{"MULTISITE", "true", true},
+		{"SUBDOMAIN_INSTALL", subdomainInstall, true},
+		{"DOMAIN_CURRENT_SITE", fmt.Sprintf("'%s'", domain), false},
+		{"PATH_CURRENT_SITE", "'/'", false},
+		{"SITE_ID_CURRENT_SITE", "1", true},
+		{"BLOG_ID_CURRENT_SITE", "1", true},
+	}
+
+	for _, constant := range multisiteConstants {
+		args := []string{"wp", "config", "set", constant.name, constant.value}
+		if constant.raw {
+			args = append(args, "--raw")
+		}
+
+		if err := mgr.Exec(args, &ddev.ExecOptions{Service: "web"}); err != nil {
+			return fmt.Errorf("failed to set %s: %w", constant.name, err)
+		}
+	}
+
+	ui.Success("Multisite configuration added")
+	return nil
+}
 func pullDatabase(projectDir string, cfg *config.Config) error {
 	ui.Section("Pulling Database")
 	ui.Info("This may take several minutes...")
