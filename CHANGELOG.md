@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.0](https://github.com/Firecrown-Media/stax/compare/v2.8.0...v2.9.0) (2025-11-15)
+
+
+### Features
+
+* **config:** implement Phase 10 advanced configuration management ([#72](https://github.com/Firecrown-Media/stax/issues/72)) ([2681fdc](https://github.com/Firecrown-Media/stax/commit/2681fdc77ff95e22b2d220e5c9c89a071cfbeefd))
+
 ## [2.8.0](https://github.com/Firecrown-Media/stax/compare/v2.7.0...v2.8.0) (2025-11-15)
 
 
