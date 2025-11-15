@@ -3,6 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/firecrown-media/stax/pkg/diagnostics"
 	"github.com/firecrown-media/stax/pkg/ui"
@@ -13,6 +15,7 @@ var (
 	doctorFix     bool
 	doctorJSON    bool
 	doctorVerbose bool
+	doctorExport  string
 )
 
 // doctorCmd represents the doctor command
@@ -60,31 +63,44 @@ Each check provides detailed information and suggestions for fixing any issues f
   # Show JSON output
   stax doctor --json
 
-  # Future: Automatically fix issues
-  stax doctor --fix`,
+  # Automatically fix issues
+  stax doctor --fix
+
+  # Export report to file
+  stax doctor --export=report.json
+  stax doctor --export=report.txt`,
 	RunE: runDoctor,
 }
 
 func init() {
 	rootCmd.AddCommand(doctorCmd)
 
-	doctorCmd.Flags().BoolVar(&doctorFix, "fix", false, "automatically fix issues (not yet implemented)")
+	doctorCmd.Flags().BoolVar(&doctorFix, "fix", false, "automatically fix issues where possible")
 	doctorCmd.Flags().BoolVar(&doctorJSON, "json", false, "output results as JSON")
 	doctorCmd.Flags().BoolVarP(&doctorVerbose, "verbose", "v", false, "show detailed output including skipped checks")
+	doctorCmd.Flags().StringVar(&doctorExport, "export", "", "export report to file (supports .json or .txt)")
 }
 
 func runDoctor(cmd *cobra.Command, args []string) error {
-	if !doctorJSON {
+	if !doctorJSON && doctorExport == "" {
 		ui.PrintHeader("Running System Diagnostics")
+		if doctorFix {
+			ui.Info("Auto-fix mode enabled - will attempt to fix issues automatically")
+		}
 		fmt.Println()
 	}
 
 	projectDir := getProjectDir()
 
-	// Run all diagnostic checks
-	report, err := diagnostics.RunAllChecks(projectDir, doctorVerbose)
+	// Run all diagnostic checks with auto-fix support
+	report, err := diagnostics.RunAllChecks(projectDir, doctorVerbose, doctorFix)
 	if err != nil {
 		return fmt.Errorf("failed to run diagnostics: %w", err)
+	}
+
+	// Export to file if requested
+	if doctorExport != "" {
+		return exportReport(report, doctorExport)
 	}
 
 	// Display results
@@ -96,22 +112,57 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 }
 
 func outputDoctorTable(report *diagnostics.DiagnosticReport) error {
-	// Display each check result
-	for _, check := range report.Checks {
-		// Skip displaying skipped checks unless verbose mode
-		if check.Status == diagnostics.StatusSkip && !report.Verbose {
+	// Display checks grouped by category
+	categoryOrder := []string{
+		"System Requirements",
+		"Configuration",
+		"Credentials",
+		"Network Connectivity",
+		"Environment",
+		"Service Health",
+	}
+
+	for _, category := range categoryOrder {
+		checks, exists := report.Categories[category]
+		if !exists || len(checks) == 0 {
 			continue
 		}
-		displayCheckResult(check, report.Verbose)
+
+		// Display category header
+		ui.Section(category)
+
+		// Display checks in this category
+		for _, check := range checks {
+			// Skip displaying skipped checks unless verbose mode
+			if check.Status == diagnostics.StatusSkip && !report.Verbose {
+				continue
+			}
+			displayCheckResult(check, report.Verbose)
+		}
+		fmt.Println()
+	}
+
+	// Display any uncategorized checks
+	if otherChecks, exists := report.Categories["Other"]; exists && len(otherChecks) > 0 {
+		ui.Section("Other")
+		for _, check := range otherChecks {
+			if check.Status == diagnostics.StatusSkip && !report.Verbose {
+				continue
+			}
+			displayCheckResult(check, report.Verbose)
+		}
+		fmt.Println()
 	}
 
 	// Display summary
-	fmt.Println()
 	ui.Section("Summary")
 	fmt.Printf("  Total Checks:   %d\n", report.Summary.Total)
 	fmt.Printf("  Passed:         %s %d\n", getStatusEmoji(diagnostics.StatusPass), report.Summary.Passed)
 	fmt.Printf("  Warnings:       %s %d\n", getStatusEmoji(diagnostics.StatusWarning), report.Summary.Warnings)
 	fmt.Printf("  Failed:         %s %d\n", getStatusEmoji(diagnostics.StatusFail), report.Summary.Failed)
+	if report.AutoFix && report.Summary.Fixed > 0 {
+		fmt.Printf("  Auto-fixed:     %d\n", report.Summary.Fixed)
+	}
 	if report.Verbose {
 		fmt.Printf("  Skipped:        %s %d\n", getStatusEmoji(diagnostics.StatusSkip), report.Summary.Skipped)
 	}
@@ -140,10 +191,10 @@ func outputDoctorTable(report *diagnostics.DiagnosticReport) error {
 		ui.Info("The environment should work, but you may want to address the warnings.")
 	}
 
-	// Show fix flag info
-	if report.HasCriticalFailures() || report.HasWarnings() {
+	// Show fix flag info if there are fixable issues
+	if !report.AutoFix && (report.HasCriticalFailures() || report.HasWarnings()) {
 		fmt.Println()
-		ui.Info("Note: Automatic fixes (stax doctor --fix) are planned for a future release.")
+		ui.Info("Tip: Run 'stax doctor --fix' to automatically fix some issues.")
 	}
 
 	return nil
@@ -152,7 +203,13 @@ func outputDoctorTable(report *diagnostics.DiagnosticReport) error {
 func displayCheckResult(check diagnostics.CheckResult, verbose bool) {
 	emoji := getStatusEmoji(check.Status)
 
-	fmt.Printf("%s %s\n", emoji, check.Name)
+	// Add fix indicator if a fix was applied
+	fixIndicator := ""
+	if check.FixApplied {
+		fixIndicator = " [FIXED]"
+	}
+
+	fmt.Printf("%s %s%s\n", emoji, check.Name, fixIndicator)
 
 	// Show message with indentation
 	if check.Message != "" {
@@ -211,4 +268,116 @@ func outputDoctorJSON(report *diagnostics.DiagnosticReport) error {
 
 	fmt.Println(string(output))
 	return nil
+}
+
+func exportReport(report *diagnostics.DiagnosticReport, filename string) error {
+	// Determine format based on file extension
+	isJSON := len(filename) > 5 && filename[len(filename)-5:] == ".json"
+
+	var content []byte
+	var err error
+
+	if isJSON {
+		// Export as JSON
+		content, err = json.MarshalIndent(report, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal report to JSON: %w", err)
+		}
+	} else {
+		// Export as text
+		content = []byte(formatReportAsText(report))
+	}
+
+	// Write to file
+	err = os.WriteFile(filename, content, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write report to file: %w", err)
+	}
+
+	ui.Success(fmt.Sprintf("Report exported to %s", filename))
+	return nil
+}
+
+func formatReportAsText(report *diagnostics.DiagnosticReport) string {
+	var output string
+
+	output += "========================================\n"
+	output += "Stax Health Diagnostics Report\n"
+	output += "========================================\n\n"
+
+	// Display checks grouped by category
+	categoryOrder := []string{
+		"System Requirements",
+		"Configuration",
+		"Credentials",
+		"Network Connectivity",
+		"Environment",
+		"Service Health",
+	}
+
+	for _, category := range categoryOrder {
+		checks, exists := report.Categories[category]
+		if !exists || len(checks) == 0 {
+			continue
+		}
+
+		output += fmt.Sprintf("%s\n", category)
+		output += strings.Repeat("-", len(category)) + "\n"
+
+		for _, check := range checks {
+			if check.Status == diagnostics.StatusSkip && !report.Verbose {
+				continue
+			}
+
+			emoji := getStatusSymbol(check.Status)
+			fixIndicator := ""
+			if check.FixApplied {
+				fixIndicator = " [FIXED]"
+			}
+
+			output += fmt.Sprintf("  %s %s%s\n", emoji, check.Name, fixIndicator)
+			if check.Message != "" {
+				output += fmt.Sprintf("    %s\n", check.Message)
+			}
+			if check.Suggestion != "" && (check.Status == diagnostics.StatusWarning || check.Status == diagnostics.StatusFail) {
+				output += fmt.Sprintf("    → %s\n", check.Suggestion)
+			}
+			output += "\n"
+		}
+		output += "\n"
+	}
+
+	// Summary
+	output += "Summary\n"
+	output += "-------\n"
+	output += fmt.Sprintf("  Total Checks:   %d\n", report.Summary.Total)
+	output += fmt.Sprintf("  Passed:         %d\n", report.Summary.Passed)
+	output += fmt.Sprintf("  Warnings:       %d\n", report.Summary.Warnings)
+	output += fmt.Sprintf("  Failed:         %d\n", report.Summary.Failed)
+	if report.AutoFix && report.Summary.Fixed > 0 {
+		output += fmt.Sprintf("  Auto-fixed:     %d\n", report.Summary.Fixed)
+	}
+	if report.Verbose {
+		output += fmt.Sprintf("  Skipped:        %d\n", report.Summary.Skipped)
+	}
+
+	healthScore := calculateHealthScore(report)
+	output += fmt.Sprintf("\n  Health Score:   %d%%\n", healthScore)
+
+	return output
+}
+
+func getStatusSymbol(status diagnostics.CheckStatus) string {
+	switch status {
+	case diagnostics.StatusPass:
+		return "[✓]"
+	case diagnostics.StatusWarning:
+		return "[⚠]"
+	case diagnostics.StatusFail:
+		return "[✗]"
+	case diagnostics.StatusSkip:
+		return "[○]"
+	default:
+		return "[?]"
+	}
 }

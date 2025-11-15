@@ -24,6 +24,9 @@ type CheckResult struct {
 	Message     string
 	Suggestion  string
 	Details     map[string]string
+	Category    string // Category for grouping checks
+	CanAutoFix  bool   // Whether this check can be auto-fixed
+	FixApplied  bool   // Whether a fix was applied
 }
 
 // CheckStatus represents the status of a check
@@ -42,6 +45,8 @@ type DiagnosticReport struct {
 	Summary     Summary
 	ProjectPath string
 	Verbose     bool
+	AutoFix     bool
+	Categories  map[string][]CheckResult // Checks grouped by category
 }
 
 // Summary provides a summary of check results
@@ -51,20 +56,25 @@ type Summary struct {
 	Warnings int
 	Failed   int
 	Skipped  int
+	Fixed    int
 }
 
 // RunAllChecks runs all diagnostic checks
-func RunAllChecks(projectPath string, verbose bool) (*DiagnosticReport, error) {
+func RunAllChecks(projectPath string, verbose bool, autoFix bool) (*DiagnosticReport, error) {
 	report := &DiagnosticReport{
 		ProjectPath: projectPath,
 		Checks:      []CheckResult{},
 		Verbose:     verbose,
+		AutoFix:     autoFix,
+		Categories:  make(map[string][]CheckResult),
 	}
 
 	// System requirements checks
 	report.Checks = append(report.Checks, CheckGit())
 	report.Checks = append(report.Checks, CheckDocker())
 	report.Checks = append(report.Checks, CheckDDEV())
+	report.Checks = append(report.Checks, CheckMemory())
+	report.Checks = append(report.Checks, CheckRequiredCommands())
 	report.Checks = append(report.Checks, CheckGo())
 
 	// Project configuration checks
@@ -80,13 +90,24 @@ func RunAllChecks(projectPath string, verbose bool) (*DiagnosticReport, error) {
 	report.Checks = append(report.Checks, CheckPorts())
 	report.Checks = append(report.Checks, CheckWPEngineAPI())
 	report.Checks = append(report.Checks, CheckWPEngineSSH())
+	report.Checks = append(report.Checks, CheckGitHubAPI())
 	report.Checks = append(report.Checks, CheckInternetConnectivity())
 
 	// Environment checks
 	report.Checks = append(report.Checks, CheckDiskSpace(projectPath))
-	report.Checks = append(report.Checks, CheckDDEVStatus(projectPath))
+
+	// Service health checks - with auto-fix support
+	ddevStatus := CheckDDEVStatus(projectPath)
+	if autoFix && ddevStatus.CanAutoFix && (ddevStatus.Status == StatusWarning || ddevStatus.Status == StatusFail) {
+		ddevStatus = FixDDEVStatus(projectPath, ddevStatus)
+	}
+	report.Checks = append(report.Checks, ddevStatus)
+
 	report.Checks = append(report.Checks, CheckDatabaseConnectivity(projectPath))
 	report.Checks = append(report.Checks, CheckWordPressInstallation(projectPath))
+
+	// Group checks by category
+	report.groupByCategory()
 
 	// Calculate summary
 	report.Summary = calculateSummary(report.Checks)
@@ -99,6 +120,7 @@ func CheckGit() CheckResult {
 	if !git.IsGitAvailable() {
 		return CheckResult{
 			Name:       "Git Installation",
+			Category:   "System Requirements",
 			Status:     StatusFail,
 			Message:    "Git is not installed",
 			Suggestion: "Install Git: https://git-scm.com/downloads",
@@ -109,6 +131,7 @@ func CheckGit() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "Git Installation",
+			Category:   "System Requirements",
 			Status:     StatusWarning,
 			Message:    "Git is installed but version could not be determined",
 			Suggestion: "Verify Git installation: git --version",
@@ -116,9 +139,10 @@ func CheckGit() CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "Git Installation",
-		Status:  StatusPass,
-		Message: fmt.Sprintf("Git version %s installed", version),
+		Name:     "Git Installation",
+		Category: "System Requirements",
+		Status:   StatusPass,
+		Message:  fmt.Sprintf("Git version %s installed", version),
 		Details: map[string]string{
 			"version": version,
 		},
@@ -131,6 +155,7 @@ func CheckDocker() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "Docker",
+			Category:   "System Requirements",
 			Status:     StatusFail,
 			Message:    "Failed to get Docker information",
 			Suggestion: "Verify Docker installation",
@@ -140,6 +165,7 @@ func CheckDocker() CheckResult {
 	if !info.Installed {
 		return CheckResult{
 			Name:       "Docker",
+			Category:   "System Requirements",
 			Status:     StatusFail,
 			Message:    "Docker is not installed",
 			Suggestion: "Install Docker Desktop: https://www.docker.com/products/docker-desktop",
@@ -149,9 +175,11 @@ func CheckDocker() CheckResult {
 	if !info.Running {
 		return CheckResult{
 			Name:       "Docker",
+			Category:   "System Requirements",
 			Status:     StatusFail,
 			Message:    "Docker is installed but not running",
 			Suggestion: "Start Docker Desktop application",
+			CanAutoFix: true,
 			Details: map[string]string{
 				"version": info.Version,
 			},
@@ -168,10 +196,11 @@ func CheckDocker() CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "Docker",
-		Status:  StatusPass,
-		Message: fmt.Sprintf("Docker %s is running", info.Version),
-		Details: details,
+		Name:     "Docker",
+		Category: "System Requirements",
+		Status:   StatusPass,
+		Message:  fmt.Sprintf("Docker %s is running", info.Version),
+		Details:  details,
 	}
 }
 
@@ -180,6 +209,7 @@ func CheckDDEV() CheckResult {
 	if !ddev.IsInstalled() {
 		return CheckResult{
 			Name:       "DDEV",
+			Category:   "System Requirements",
 			Status:     StatusFail,
 			Message:    "DDEV is not installed",
 			Suggestion: "Install DDEV: https://ddev.readthedocs.io/en/stable/users/install/",
@@ -190,6 +220,7 @@ func CheckDDEV() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "DDEV",
+			Category:   "System Requirements",
 			Status:     StatusWarning,
 			Message:    "DDEV is installed but version could not be determined",
 			Suggestion: "Verify DDEV installation: ddev version",
@@ -197,7 +228,8 @@ func CheckDDEV() CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "DDEV",
+		Name:     "DDEV",
+		Category: "System Requirements",
 		Status:  StatusPass,
 		Message: fmt.Sprintf("DDEV version %s installed", version),
 		Details: map[string]string{
@@ -213,6 +245,7 @@ func CheckGo() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "Go Installation",
+			Category:   "System Requirements",
 			Status:     StatusSkip,
 			Message:    "Go is not installed (optional for development)",
 			Suggestion: "Install Go if you plan to develop Stax: https://golang.org/dl/",
@@ -222,6 +255,7 @@ func CheckGo() CheckResult {
 	version := strings.TrimSpace(string(output))
 	return CheckResult{
 		Name:    "Go Installation",
+		Category: "System Requirements",
 		Status:  StatusPass,
 		Message: version,
 		Details: map[string]string{
@@ -236,6 +270,7 @@ func CheckStaxConfig(projectPath string) CheckResult {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return CheckResult{
 			Name:       "Stax Configuration",
+			Category:   "Configuration",
 			Status:     StatusFail,
 			Message:    ".stax.yml not found",
 			Suggestion: "Create configuration: stax init or stax config template > .stax.yml",
@@ -247,6 +282,7 @@ func CheckStaxConfig(projectPath string) CheckResult {
 
 	return CheckResult{
 		Name:    "Stax Configuration",
+		Category: "Configuration",
 		Status:  StatusPass,
 		Message: ".stax.yml found",
 		Details: map[string]string{
@@ -261,6 +297,7 @@ func CheckDDEVConfig(projectPath string) CheckResult {
 	if _, err := os.Stat(ddevPath); os.IsNotExist(err) {
 		return CheckResult{
 			Name:       "DDEV Configuration",
+			Category:   "Configuration",
 			Status:     StatusWarning,
 			Message:    ".ddev directory not found",
 			Suggestion: "Initialize DDEV: stax init or ddev config",
@@ -274,6 +311,7 @@ func CheckDDEVConfig(projectPath string) CheckResult {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return CheckResult{
 			Name:       "DDEV Configuration",
+			Category:   "Configuration",
 			Status:     StatusWarning,
 			Message:    ".ddev/config.yaml not found",
 			Suggestion: "Configure DDEV: stax init or ddev config",
@@ -285,6 +323,7 @@ func CheckDDEVConfig(projectPath string) CheckResult {
 
 	return CheckResult{
 		Name:    "DDEV Configuration",
+		Category: "Configuration",
 		Status:  StatusPass,
 		Message: "DDEV is configured",
 		Details: map[string]string{
@@ -301,6 +340,7 @@ func CheckCredentials(projectPath string) CheckResult {
 	if diag.OverallStatus == "error" {
 		return CheckResult{
 			Name:       "Credentials",
+			Category:   "Credentials",
 			Status:     StatusFail,
 			Message:    "Credential configuration has errors",
 			Suggestion: "Run: stax setup --check for details",
@@ -310,6 +350,7 @@ func CheckCredentials(projectPath string) CheckResult {
 	if diag.OverallStatus == "warning" {
 		return CheckResult{
 			Name:       "Credentials",
+			Category:   "Credentials",
 			Status:     StatusWarning,
 			Message:    "Credential configuration has warnings",
 			Suggestion: "Run: stax setup --check for details",
@@ -318,6 +359,7 @@ func CheckCredentials(projectPath string) CheckResult {
 
 	return CheckResult{
 		Name:    "Credentials",
+		Category:   "Credentials",
 		Status:  StatusPass,
 		Message: "All credentials are properly configured",
 	}
@@ -329,6 +371,7 @@ func CheckSSHKey() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "SSH Key",
+			Category:   "Credentials",
 			Status:     StatusFail,
 			Message:    "Cannot determine home directory",
 			Suggestion: "Check your system configuration",
@@ -356,6 +399,7 @@ func CheckSSHKey() CheckResult {
 	if foundKey == "" {
 		return CheckResult{
 			Name:       "SSH Key",
+			Category:   "Credentials",
 			Status:     StatusWarning,
 			Message:    "No SSH key found",
 			Suggestion: "Generate SSH key: ssh-keygen -t ed25519 -C \"your_email@example.com\"",
@@ -370,6 +414,7 @@ func CheckSSHKey() CheckResult {
 	if mode.Perm()&0077 != 0 {
 		return CheckResult{
 			Name:       "SSH Key",
+			Category:   "Credentials",
 			Status:     StatusWarning,
 			Message:    "SSH key has insecure permissions",
 			Suggestion: fmt.Sprintf("Fix permissions: chmod 600 %s", foundKey),
@@ -385,6 +430,7 @@ func CheckSSHKey() CheckResult {
 	if _, err := os.Stat(pubKeyPath); os.IsNotExist(err) {
 		return CheckResult{
 			Name:       "SSH Key",
+			Category:   "Credentials",
 			Status:     StatusWarning,
 			Message:    "SSH public key not found",
 			Suggestion: fmt.Sprintf("Generate public key: ssh-keygen -y -f %s > %s", foundKey, pubKeyPath),
@@ -396,6 +442,7 @@ func CheckSSHKey() CheckResult {
 
 	return CheckResult{
 		Name:    "SSH Key",
+		Category:   "Credentials",
 		Status:  StatusPass,
 		Message: "SSH key found and properly configured",
 		Details: map[string]string{
@@ -412,6 +459,7 @@ func CheckGitHubToken() CheckResult {
 	if err != nil || token == "" {
 		return CheckResult{
 			Name:       "GitHub Token",
+			Category:   "Credentials",
 			Status:     StatusSkip,
 			Message:    "GitHub token not configured (optional)",
 			Suggestion: "Configure token if needed for private repos: stax setup github",
@@ -420,6 +468,7 @@ func CheckGitHubToken() CheckResult {
 
 	return CheckResult{
 		Name:    "GitHub Token",
+		Category:   "Credentials",
 		Status:  StatusPass,
 		Message: "GitHub token configured",
 		Details: map[string]string{
@@ -441,6 +490,7 @@ func CheckPorts() CheckResult {
 
 		return CheckResult{
 			Name:       "Port Availability",
+			Category:   "Network Connectivity",
 			Status:     StatusWarning,
 			Message:    fmt.Sprintf("Some required ports are in use: %v", inUse),
 			Suggestion: fmt.Sprintf("Consider using alternative ports:\n%s", strings.Join(suggestions, "\n")),
@@ -452,6 +502,7 @@ func CheckPorts() CheckResult {
 
 	return CheckResult{
 		Name:    "Port Availability",
+		Category:   "Network Connectivity",
 		Status:  StatusPass,
 		Message: "All required ports are available",
 		Details: map[string]string{
@@ -466,6 +517,7 @@ func CheckWPEngineAPI() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "WPEngine API",
+			Category:   "Network Connectivity",
 			Status:     StatusWarning,
 			Message:    "WPEngine credentials not configured",
 			Suggestion: "Configure credentials: stax setup wpengine",
@@ -481,6 +533,7 @@ func CheckWPEngineAPI() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "WPEngine API",
+			Category:   "Network Connectivity",
 			Status:     StatusWarning,
 			Message:    "Failed to create API request",
 			Suggestion: "Check your network connection",
@@ -492,6 +545,7 @@ func CheckWPEngineAPI() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "WPEngine API",
+			Category:   "Network Connectivity",
 			Status:     StatusWarning,
 			Message:    "Cannot reach WPEngine API",
 			Suggestion: "Check your internet connection and firewall settings",
@@ -505,6 +559,7 @@ func CheckWPEngineAPI() CheckResult {
 	if resp.StatusCode == 401 {
 		return CheckResult{
 			Name:       "WPEngine API",
+			Category:   "Network Connectivity",
 			Status:     StatusFail,
 			Message:    "WPEngine API credentials are invalid",
 			Suggestion: "Reconfigure credentials: stax setup wpengine",
@@ -517,6 +572,7 @@ func CheckWPEngineAPI() CheckResult {
 	if resp.StatusCode != 200 {
 		return CheckResult{
 			Name:       "WPEngine API",
+			Category:   "Network Connectivity",
 			Status:     StatusWarning,
 			Message:    fmt.Sprintf("WPEngine API returned status %d", resp.StatusCode),
 			Suggestion: "Check WPEngine API status",
@@ -528,6 +584,7 @@ func CheckWPEngineAPI() CheckResult {
 
 	return CheckResult{
 		Name:    "WPEngine API",
+		Category:   "Network Connectivity",
 		Status:  StatusPass,
 		Message: "WPEngine API is reachable and credentials are valid",
 		Details: map[string]string{
@@ -542,6 +599,7 @@ func CheckWPEngineSSH() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "WPEngine SSH Gateway",
+			Category:   "Network Connectivity",
 			Status:     StatusWarning,
 			Message:    "WPEngine credentials not configured",
 			Suggestion: "Configure credentials: stax setup wpengine",
@@ -558,6 +616,7 @@ func CheckWPEngineSSH() CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "WPEngine SSH Gateway",
+			Category:   "Network Connectivity",
 			Status:     StatusWarning,
 			Message:    fmt.Sprintf("Cannot reach SSH gateway: %s", gateway),
 			Suggestion: "Check your internet connection and firewall settings",
@@ -571,6 +630,7 @@ func CheckWPEngineSSH() CheckResult {
 
 	return CheckResult{
 		Name:    "WPEngine SSH Gateway",
+		Category:   "Network Connectivity",
 		Status:  StatusPass,
 		Message: "SSH gateway is reachable",
 		Details: map[string]string{
@@ -600,6 +660,7 @@ func CheckInternetConnectivity() CheckResult {
 			resp.Body.Close()
 			return CheckResult{
 				Name:    "Internet Connectivity",
+			Category:   "Network Connectivity",
 				Status:  StatusPass,
 				Message: "Internet connection is working",
 				Details: map[string]string{
@@ -612,6 +673,7 @@ func CheckInternetConnectivity() CheckResult {
 
 	return CheckResult{
 		Name:       "Internet Connectivity",
+		Category:   "Network Connectivity",
 		Status:     StatusWarning,
 		Message:    "Cannot reach internet",
 		Suggestion: "Check your network connection",
@@ -629,6 +691,7 @@ func CheckDiskSpace(projectPath string) CheckResult {
 		if err != nil {
 			return CheckResult{
 				Name:       "Disk Space",
+			Category:   "Environment",
 				Status:     StatusWarning,
 				Message:    "Cannot determine current directory",
 				Suggestion: "Check your working directory",
@@ -641,6 +704,7 @@ func CheckDiskSpace(projectPath string) CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "Disk Space",
+			Category:   "Environment",
 			Status:     StatusWarning,
 			Message:    "Cannot check disk space",
 			Suggestion: "Verify project path is accessible",
@@ -661,6 +725,7 @@ func CheckDiskSpace(projectPath string) CheckResult {
 	if availableGB < 5 {
 		return CheckResult{
 			Name:       "Disk Space",
+			Category:   "Environment",
 			Status:     StatusFail,
 			Message:    fmt.Sprintf("Low disk space: %.2f GB available", availableGB),
 			Suggestion: "Free up disk space. At least 5GB recommended for DDEV projects",
@@ -675,6 +740,7 @@ func CheckDiskSpace(projectPath string) CheckResult {
 	if availableGB < 10 {
 		return CheckResult{
 			Name:       "Disk Space",
+			Category:   "Environment",
 			Status:     StatusWarning,
 			Message:    fmt.Sprintf("Moderate disk space: %.2f GB available", availableGB),
 			Suggestion: "Consider freeing up disk space. 10GB+ recommended",
@@ -688,6 +754,7 @@ func CheckDiskSpace(projectPath string) CheckResult {
 
 	return CheckResult{
 		Name:    "Disk Space",
+		Category:   "Environment",
 		Status:  StatusPass,
 		Message: fmt.Sprintf("%.2f GB available", availableGB),
 		Details: map[string]string{
@@ -705,6 +772,7 @@ func CheckDDEVStatus(projectPath string) CheckResult {
 	if _, err := os.Stat(ddevPath); os.IsNotExist(err) {
 		return CheckResult{
 			Name:       "DDEV Status",
+			Category:   "Service Health",
 			Status:     StatusSkip,
 			Message:    "DDEV not configured for this project",
 			Suggestion: "Initialize DDEV: stax init",
@@ -717,6 +785,7 @@ func CheckDDEVStatus(projectPath string) CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "DDEV Status",
+			Category:   "Service Health",
 			Status:     StatusWarning,
 			Message:    "Cannot determine DDEV status",
 			Suggestion: "Check DDEV installation: ddev version",
@@ -726,9 +795,11 @@ func CheckDDEVStatus(projectPath string) CheckResult {
 	if !running {
 		return CheckResult{
 			Name:       "DDEV Status",
+			Category:   "Service Health",
 			Status:     StatusWarning,
 			Message:    "DDEV project is not running",
 			Suggestion: "Start DDEV: stax start",
+			CanAutoFix: true,
 		}
 	}
 
@@ -737,6 +808,7 @@ func CheckDDEVStatus(projectPath string) CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:    "DDEV Status",
+			Category:   "Service Health",
 			Status:  StatusPass,
 			Message: "DDEV project is running",
 		}
@@ -744,6 +816,7 @@ func CheckDDEVStatus(projectPath string) CheckResult {
 
 	return CheckResult{
 		Name:    "DDEV Status",
+		Category:   "Service Health",
 		Status:  StatusPass,
 		Message: fmt.Sprintf("DDEV project '%s' is running", status.ProjectName),
 		Details: map[string]string{
@@ -762,6 +835,7 @@ func CheckDatabaseConnectivity(projectPath string) CheckResult {
 	if _, err := os.Stat(ddevPath); os.IsNotExist(err) {
 		return CheckResult{
 			Name:    "Database Connectivity",
+			Category:   "Service Health",
 			Status:  StatusSkip,
 			Message: "DDEV not configured",
 		}
@@ -773,6 +847,7 @@ func CheckDatabaseConnectivity(projectPath string) CheckResult {
 	if err != nil || !running {
 		return CheckResult{
 			Name:       "Database Connectivity",
+			Category:   "Service Health",
 			Status:     StatusSkip,
 			Message:    "DDEV is not running",
 			Suggestion: "Start DDEV to check database: stax start",
@@ -786,6 +861,7 @@ func CheckDatabaseConnectivity(projectPath string) CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "Database Connectivity",
+			Category:   "Service Health",
 			Status:     StatusFail,
 			Message:    "Cannot connect to database",
 			Suggestion: "Check DDEV database container: ddev describe",
@@ -797,6 +873,7 @@ func CheckDatabaseConnectivity(projectPath string) CheckResult {
 
 	return CheckResult{
 		Name:    "Database Connectivity",
+		Category:   "Service Health",
 		Status:  StatusPass,
 		Message: "Database is accessible",
 	}
@@ -808,6 +885,7 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 	if projectPath == "" || projectPath == "." {
 		return CheckResult{
 			Name:    "WordPress Installation",
+			Category:   "Service Health",
 			Status:  StatusSkip,
 			Message: "Not in a project directory",
 		}
@@ -818,6 +896,7 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 	if _, err := os.Stat(wpConfigPath); os.IsNotExist(err) {
 		return CheckResult{
 			Name:       "WordPress Installation",
+			Category:   "Service Health",
 			Status:     StatusWarning,
 			Message:    "wp-config.php not found",
 			Suggestion: "Install WordPress or initialize project: stax init",
@@ -829,6 +908,7 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 	if _, err := os.Stat(wpContentPath); os.IsNotExist(err) {
 		return CheckResult{
 			Name:       "WordPress Installation",
+			Category:   "Service Health",
 			Status:     StatusWarning,
 			Message:    "wp-content directory not found",
 			Suggestion: "Check WordPress installation",
@@ -841,6 +921,7 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 	if !running {
 		return CheckResult{
 			Name:    "WordPress Installation",
+			Category:   "Service Health",
 			Status:  StatusPass,
 			Message: "WordPress files present (DDEV not running to verify)",
 			Details: map[string]string{
@@ -857,6 +938,7 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 	if err != nil {
 		return CheckResult{
 			Name:       "WordPress Installation",
+			Category:   "Service Health",
 			Status:     StatusWarning,
 			Message:    "WordPress is not fully installed",
 			Suggestion: "Complete WordPress installation or run: ddev wp core install",
@@ -874,11 +956,209 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 
 	return CheckResult{
 		Name:    "WordPress Installation",
+		Category:   "Service Health",
 		Status:  StatusPass,
 		Message: fmt.Sprintf("WordPress %s installed and configured", version),
 		Details: map[string]string{
 			"version": version,
 		},
+	}
+}
+
+// CheckMemory checks available system memory
+func CheckMemory() CheckResult {
+	cmd := exec.Command("sysctl", "-n", "hw.memsize")
+	output, err := cmd.Output()
+	if err != nil {
+		return CheckResult{
+			Name:       "Available Memory",
+			Category:   "System Requirements",
+			Status:     StatusWarning,
+			Message:    "Cannot determine available memory",
+			Suggestion: "Check system configuration",
+		}
+	}
+
+	var totalBytes int64
+	fmt.Sscanf(strings.TrimSpace(string(output)), "%d", &totalBytes)
+	totalGB := float64(totalBytes) / (1024 * 1024 * 1024)
+
+	if totalGB < 4 {
+		return CheckResult{
+			Name:       "Available Memory",
+			Category:   "System Requirements",
+			Status:     StatusFail,
+			Message:    fmt.Sprintf("Low memory: %.1f GB total", totalGB),
+			Suggestion: "DDEV requires at least 4GB of RAM. Consider upgrading your system.",
+			Details: map[string]string{
+				"total": fmt.Sprintf("%.1f GB", totalGB),
+			},
+		}
+	}
+
+	if totalGB < 8 {
+		return CheckResult{
+			Name:       "Available Memory",
+			Category:   "System Requirements",
+			Status:     StatusWarning,
+			Message:    fmt.Sprintf("%.1f GB total memory", totalGB),
+			Suggestion: "8GB+ recommended for optimal performance",
+			Details: map[string]string{
+				"total": fmt.Sprintf("%.1f GB", totalGB),
+			},
+		}
+	}
+
+	return CheckResult{
+		Name:     "Available Memory",
+		Category: "System Requirements",
+		Status:   StatusPass,
+		Message:  fmt.Sprintf("%.1f GB total memory", totalGB),
+		Details: map[string]string{
+			"total": fmt.Sprintf("%.1f GB", totalGB),
+		},
+	}
+}
+
+// CheckRequiredCommands checks if required command-line tools are available
+func CheckRequiredCommands() CheckResult {
+	requiredCmds := []string{"git", "ssh", "rsync"}
+	missing := []string{}
+
+	for _, cmd := range requiredCmds {
+		if _, err := exec.LookPath(cmd); err != nil {
+			missing = append(missing, cmd)
+		}
+	}
+
+	if len(missing) > 0 {
+		return CheckResult{
+			Name:       "Required Commands",
+			Category:   "System Requirements",
+			Status:     StatusFail,
+			Message:    fmt.Sprintf("Missing required commands: %s", strings.Join(missing, ", ")),
+			Suggestion: fmt.Sprintf("Install missing commands: %s", strings.Join(missing, ", ")),
+			Details: map[string]string{
+				"missing": strings.Join(missing, ", "),
+			},
+		}
+	}
+
+	return CheckResult{
+		Name:     "Required Commands",
+		Category: "System Requirements",
+		Status:   StatusPass,
+		Message:  "All required commands available",
+		Details: map[string]string{
+			"commands": strings.Join(requiredCmds, ", "),
+		},
+	}
+}
+
+// CheckGitHubAPI checks GitHub API accessibility
+func CheckGitHubAPI() CheckResult {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Get("https://api.github.com")
+	if err != nil {
+		return CheckResult{
+			Name:       "GitHub API",
+			Category:   "Network Connectivity",
+			Status:     StatusWarning,
+			Message:    "Cannot reach GitHub API",
+			Suggestion: "Check your internet connection and firewall settings",
+			Details: map[string]string{
+				"error": err.Error(),
+			},
+		}
+	}
+	defer resp.Body.Close()
+
+	return CheckResult{
+		Name:     "GitHub API",
+		Category: "Network Connectivity",
+		Status:   StatusPass,
+		Message:  "GitHub API is accessible",
+		Details: map[string]string{
+			"status_code": fmt.Sprintf("%d", resp.StatusCode),
+		},
+	}
+}
+
+// FixDDEVStatus attempts to fix DDEV status issues
+func FixDDEVStatus(projectPath string, originalCheck CheckResult) CheckResult {
+	manager := ddev.NewManager(projectPath)
+
+	// Try to start DDEV
+	err := manager.Start()
+	if err != nil {
+		return CheckResult{
+			Name:       originalCheck.Name,
+			Category:   originalCheck.Category,
+			Status:     StatusFail,
+			Message:    "Failed to start DDEV",
+			Suggestion: "Start DDEV manually: stax start",
+			CanAutoFix: true,
+			FixApplied: true,
+			Details: map[string]string{
+				"error": err.Error(),
+			},
+		}
+	}
+
+	// Wait for DDEV to be ready
+	err = manager.WaitForReady(30 * time.Second)
+	if err != nil {
+		return CheckResult{
+			Name:       originalCheck.Name,
+			Category:   originalCheck.Category,
+			Status:     StatusWarning,
+			Message:    "DDEV started but not ready",
+			Suggestion: "Wait for DDEV to fully start: ddev describe",
+			CanAutoFix: true,
+			FixApplied: true,
+		}
+	}
+
+	// Get status to confirm
+	status, err := manager.GetStatus()
+	if err != nil {
+		return CheckResult{
+			Name:       originalCheck.Name,
+			Category:   originalCheck.Category,
+			Status:     StatusPass,
+			Message:    "DDEV project started successfully",
+			CanAutoFix: true,
+			FixApplied: true,
+		}
+	}
+
+	return CheckResult{
+		Name:       originalCheck.Name,
+		Category:   originalCheck.Category,
+		Status:     StatusPass,
+		Message:    fmt.Sprintf("DDEV project '%s' started successfully", status.ProjectName),
+		CanAutoFix: true,
+		FixApplied: true,
+		Details: map[string]string{
+			"project_name": status.ProjectName,
+			"state":        status.State,
+			"php_version":  status.PHPVersion,
+		},
+	}
+}
+
+// groupByCategory groups check results by category
+func (r *DiagnosticReport) groupByCategory() {
+	r.Categories = make(map[string][]CheckResult)
+	for _, check := range r.Checks {
+		category := check.Category
+		if category == "" {
+			category = "Other"
+		}
+		r.Categories[category] = append(r.Categories[category], check)
 	}
 }
 
@@ -889,6 +1169,9 @@ func calculateSummary(checks []CheckResult) Summary {
 	}
 
 	for _, check := range checks {
+		if check.FixApplied {
+			summary.Fixed++
+		}
 		switch check.Status {
 		case StatusPass:
 			summary.Passed++
