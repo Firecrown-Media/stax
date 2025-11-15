@@ -138,8 +138,11 @@ stax init
 2. Creates `.stax.yml` configuration file
 3. Sets up DDEV environment (`.ddev/config.yaml`)
 4. Optionally clones your GitHub repository
-5. Optionally pulls database from WPEngine
-6. Starts the environment automatically
+5. Starts the environment automatically
+6. Downloads WordPress core automatically
+7. Generates wp-config.php with database credentials
+8. Optionally pulls database from WPEngine
+9. Your site is immediately accessible!
 
 **Example prompts and answers:**
 
@@ -162,9 +165,13 @@ stax init
 ✓ Created DDEV configuration
 ✓ Repository cloned
 ✓ Environment started
+✓ WordPress core downloaded
+✓ wp-config.php generated
 ✓ Database pulled and imported
 
 Your site is ready at: https://my-wordpress-site.ddev.site
+
+No manual setup required - everything is configured and ready to use!
 ```
 
 ---
@@ -236,16 +243,19 @@ Start with a WPEngine site and create local environment:
 # Create project directory
 mkdir my-site && cd my-site
 
-# Initialize with WPEngine integration
-stax init
+# Initialize with WPEngine integration (one command!)
+stax init --start
 
 # Answer prompts:
 # - Project name: my-site
 # - WPEngine install: mysite-prod
 # - Pull database: Yes
-# - Start now: Yes
 
-# Your environment is now running with WPEngine database!
+# Your environment is now running with:
+# ✓ WordPress core downloaded
+# ✓ Database configured
+# ✓ WPEngine database imported
+# ✓ Site immediately accessible!
 ```
 
 ---
@@ -258,8 +268,8 @@ Clone an existing WordPress repository and set up local environment:
 # Create project directory
 mkdir my-site && cd my-site
 
-# Initialize with repository
-stax init
+# Initialize with repository (one command!)
+stax init --start
 
 # Answer prompts:
 # - Repository: https://github.com/org/repo.git
@@ -267,6 +277,10 @@ stax init
 # - Pull database: Yes
 
 # Repository cloned and environment started!
+# ✓ WordPress core downloaded
+# ✓ wp-config.php generated
+# ✓ Database imported
+# ✓ Everything ready to go!
 ```
 
 ---
@@ -280,13 +294,16 @@ Set up a local WordPress environment without WPEngine integration:
 mkdir my-site && cd my-site
 
 # Initialize without WPEngine
-stax init
+stax init --start
 
 # Answer prompts:
 # - Skip WPEngine setup (leave install name blank)
 # - Use defaults for DDEV configuration
 
 # Local-only environment created!
+# ✓ WordPress core downloaded
+# ✓ wp-config.php generated
+# ✓ Fresh WordPress installation ready
 ```
 
 ---
