@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.7.0](https://github.com/Firecrown-Media/stax/compare/v2.6.0...v2.7.0) (2025-11-15)
+
+
+### Features
+
+* **db,files:** implement Phases 8 & 9 push capabilities ([#68](https://github.com/Firecrown-Media/stax/issues/68)) ([ef89e8d](https://github.com/Firecrown-Media/stax/commit/ef89e8debc82f147cddb1c55568860dd0bc7287c))
+
 ## [2.6.0](https://github.com/Firecrown-Media/stax/compare/v2.5.0...v2.6.0) (2025-11-15)
 
 
