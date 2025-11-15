@@ -222,6 +222,85 @@ func (c *SSHClient) GetDirectorySize(remotePath string) (int64, error) {
 	return size, nil
 }
 
+// UploadFile uploads a file to the remote server via SCP
+func (c *SSHClient) UploadFile(localPath, remotePath string) error {
+	// Validate and sanitize local path
+	sanitizedLocalPath, err := security.SanitizePath(localPath)
+	if err != nil {
+		return fmt.Errorf("invalid local path: %w", err)
+	}
+
+	// Validate and sanitize remote path
+	sanitizedRemotePath, err := security.SanitizePath(remotePath)
+	if err != nil {
+		return fmt.Errorf("invalid remote path: %w", err)
+	}
+
+	// Sanitize for shell to prevent command injection
+	safeRemotePath, err := security.SanitizeForShell(sanitizedRemotePath)
+	if err != nil {
+		return fmt.Errorf("remote path contains unsafe characters: %w", err)
+	}
+
+	// Open local file for reading
+	localFile, err := os.Open(sanitizedLocalPath)
+	if err != nil {
+		return fmt.Errorf("failed to open local file: %w", err)
+	}
+	defer localFile.Close()
+
+	// Get file info for size
+	fileInfo, err := localFile.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat local file: %w", err)
+	}
+
+	// Create SSH session for upload
+	session, err := c.client.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create SSH session: %w", err)
+	}
+	defer session.Close()
+
+	// Create remote file using cat
+	cmd := fmt.Sprintf("cat > %s", safeRemotePath)
+	stdin, err := session.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdin pipe: %w", err)
+	}
+
+	// Setup error capturing
+	var stderr bytes.Buffer
+	session.Stderr = &stderr
+
+	// Start the remote command
+	if err := session.Start(cmd); err != nil {
+		return fmt.Errorf("failed to start upload command: %w", err)
+	}
+
+	// Copy file contents to remote
+	written, err := io.Copy(stdin, localFile)
+	if err != nil {
+		stdin.Close()
+		return fmt.Errorf("failed to upload file: %w", err)
+	}
+
+	// Close stdin to signal EOF
+	stdin.Close()
+
+	// Wait for the command to complete
+	if err := session.Wait(); err != nil {
+		return fmt.Errorf("failed to complete upload: %w (stderr: %s)", err, stderr.String())
+	}
+
+	// Verify upload size matches
+	if written != fileInfo.Size() {
+		return fmt.Errorf("upload size mismatch: sent %d bytes, expected %d bytes", written, fileInfo.Size())
+	}
+
+	return nil
+}
+
 // TestConnection tests the SSH connection
 func (c *SSHClient) TestConnection() error {
 	_, err := c.ExecuteCommand("echo 'test'")

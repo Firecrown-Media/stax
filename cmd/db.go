@@ -2,12 +2,16 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"time"
 
+	"github.com/firecrown-media/stax/pkg/config"
 	"github.com/firecrown-media/stax/pkg/credentials"
 	"github.com/firecrown-media/stax/pkg/ddev"
 	"github.com/firecrown-media/stax/pkg/errors"
 	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/firecrown-media/stax/pkg/wordpress"
+	"github.com/firecrown-media/stax/pkg/wpengine"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +31,8 @@ var (
 	dbSkipLogs       bool
 	dbSkipTransients bool
 	dbSkipSpam       bool
+	dbDryRun         bool
+	dbSkipBackup     bool
 )
 
 // dbPullCmd represents the db:pull command
@@ -60,9 +66,41 @@ This command will:
 	RunE: runDBPull,
 }
 
+// dbPushCmd represents the db:push command
+var dbPushCmd = &cobra.Command{
+	Use:   "push",
+	Short: "Push database to WPEngine",
+	Long: `Push local database to WPEngine environment.
+
+This command will:
+  - Export the local database from DDEV
+  - Run search-replace to update URLs for the target environment
+  - Upload the database to WPEngine
+  - Import the database on WPEngine
+  - Clean up temporary files
+
+WARNING: This will overwrite the database on the target environment!`,
+	Example: `  # Push to staging
+  stax db push --environment=staging
+
+  # Push to production (requires confirmation)
+  stax db push --environment=production
+
+  # Dry run to see what would happen
+  stax db push --environment=staging --dry-run
+
+  # Push without creating remote backup
+  stax db push --environment=staging --skip-backup
+
+  # Push without URL replacement
+  stax db push --environment=staging --skip-replace`,
+	RunE: runDBPush,
+}
+
 func init() {
 	rootCmd.AddCommand(dbCmd)
 	dbCmd.AddCommand(dbPullCmd)
+	dbCmd.AddCommand(dbPushCmd)
 
 	// Flags for pull
 	dbPullCmd.Flags().StringVar(&dbEnvironment, "environment", "", "WPEngine environment (default: from config)")
@@ -73,6 +111,13 @@ func init() {
 	dbPullCmd.Flags().BoolVar(&dbSkipLogs, "skip-logs", true, "skip log tables")
 	dbPullCmd.Flags().BoolVar(&dbSkipTransients, "skip-transients", true, "skip transient tables")
 	dbPullCmd.Flags().BoolVar(&dbSkipSpam, "skip-spam", true, "skip spam/trash")
+
+	// Flags for push
+	dbPushCmd.Flags().StringVar(&dbEnvironment, "environment", "", "WPEngine environment (required: staging or production)")
+	dbPushCmd.MarkFlagRequired("environment")
+	dbPushCmd.Flags().BoolVar(&dbDryRun, "dry-run", false, "show what would happen without pushing")
+	dbPushCmd.Flags().BoolVar(&dbSkipBackup, "skip-backup", false, "skip creating remote backup before import")
+	dbPushCmd.Flags().BoolVar(&dbSkipReplace, "skip-replace", false, "skip automatic URL search-replace")
 }
 
 func runDBPull(cmd *cobra.Command, args []string) error {
@@ -176,6 +221,208 @@ func runDBPull(cmd *cobra.Command, args []string) error {
 	ui.Success("\nDatabase pull completed!")
 
 	return nil
+}
+
+func runDBPush(cmd *cobra.Command, args []string) error {
+	ui.PrintHeader("Pushing Database to WPEngine")
+
+	// Load configuration
+	cfg, err := loadConfigForCommand()
+	if err != nil {
+		return err
+	}
+
+	// Validate environment
+	if dbEnvironment != "staging" && dbEnvironment != "production" {
+		return fmt.Errorf("environment must be 'staging' or 'production', got: %s", dbEnvironment)
+	}
+
+	// Production safety check - require explicit confirmation
+	if dbEnvironment == "production" && !dbDryRun {
+		ui.Warning("You are about to push the local database to PRODUCTION!")
+		ui.Warning("This will OVERWRITE the production database!")
+		ui.Info("")
+
+		if !ui.Confirm("Are you absolutely sure you want to continue?") {
+			ui.Info("Database push cancelled")
+			return nil
+		}
+
+		// Double confirmation for production
+		ui.Info("")
+		ui.Warning("This is your last chance to cancel!")
+		if !ui.Confirm("Type 'yes' to proceed with production database push") {
+			ui.Info("Database push cancelled")
+			return nil
+		}
+	}
+
+	ui.Info(fmt.Sprintf("Environment: %s", dbEnvironment))
+	ui.Info(fmt.Sprintf("Install: %s", cfg.WPEngine.Install))
+
+	// Check if DDEV is running
+	projectDir := getProjectDir()
+	mgr := ddev.NewManager(projectDir)
+	running, err := mgr.IsRunning()
+	if err != nil {
+		return fmt.Errorf("failed to check DDEV status: %w", err)
+	}
+	if !running {
+		return fmt.Errorf("DDEV must be running to export database. Please run 'stax start' first")
+	}
+
+	// Get credentials
+	creds, err := credentials.GetWPEngineCredentialsWithFallback(cfg.WPEngine.Install)
+	if err != nil {
+		if credErr, ok := err.(*credentials.CredentialsNotFoundError); ok {
+			return errors.NewCredentialsNotFoundError(credErr.Tried, credErr.LastErr)
+		}
+		return fmt.Errorf("failed to get WPEngine credentials: %w", err)
+	}
+
+	// Get SSH key
+	sshKey, err := credentials.GetSSHPrivateKeyWithFallback("wpengine")
+	if err != nil {
+		if keyErr, ok := err.(*credentials.SSHKeyNotFoundError); ok {
+			return errors.NewSSHKeyNotFoundError("", keyErr.Tried, keyErr.LastErr)
+		}
+		return fmt.Errorf("failed to get SSH key: %w", err)
+	}
+
+	// Use credentials
+	_ = creds
+	_ = sshKey
+
+	if dbDryRun {
+		ui.Info("\n=== DRY RUN MODE ===")
+		ui.Info("The following operations would be performed:")
+		ui.Info("  1. Export local database from DDEV")
+		ui.Info("  2. Run search-replace: %s -> %s", getDDEVURL(cfg), getTargetURL(cfg, dbEnvironment))
+		if !dbSkipBackup {
+			ui.Info("  3. Create backup on WPEngine %s environment", dbEnvironment)
+		}
+		ui.Info("  4. Upload database to WPEngine")
+		ui.Info("  5. Import database on WPEngine %s environment", dbEnvironment)
+		ui.Info("  6. Clean up temporary files")
+		ui.Info("\nNo changes will be made in dry-run mode.")
+		return nil
+	}
+
+	// Export local database
+	ui.Info("Exporting local database...")
+	tmpDBPath := fmt.Sprintf("/tmp/stax-db-push-%d.sql", os.Getpid())
+	defer os.Remove(tmpDBPath) // Clean up local temp file
+
+	if err := mgr.ExportDB(tmpDBPath); err != nil {
+		return fmt.Errorf("failed to export local database: %w", err)
+	}
+	ui.Success("Database exported")
+
+	// Connect to WPEngine
+	ui.Info("Connecting to WPEngine SSH Gateway...")
+	sshConfig := wpengine.SSHConfig{
+		Host:       cfg.WPEngine.SSHGateway,
+		Port:       22,
+		User:       creds.SSHUser,
+		PrivateKey: sshKey,
+		Install:    cfg.WPEngine.Install,
+	}
+
+	sshClient, err := wpengine.NewSSHClient(sshConfig)
+	if err != nil {
+		return fmt.Errorf("failed to connect to WPEngine: %w", err)
+	}
+	defer sshClient.Close()
+	ui.Success("Connected to WPEngine")
+
+	// Create backup on remote unless skipped
+	if !dbSkipBackup {
+		ui.Info("Creating database backup on WPEngine...")
+		backupPath := fmt.Sprintf("~/db-backup-before-push-%d.sql", time.Now().Unix())
+		backupCmd := fmt.Sprintf("wp db export %s", backupPath)
+		if _, err := sshClient.ExecuteCommand(backupCmd); err != nil {
+			ui.Warning(fmt.Sprintf("Failed to create backup: %v", err))
+			ui.Info("Continuing without backup...")
+		} else {
+			ui.Success(fmt.Sprintf("Backup created: %s", backupPath))
+		}
+	}
+
+	// Upload database file
+	ui.Info("Uploading database to WPEngine...")
+	remoteDBPath := fmt.Sprintf("~/stax-db-push-%d.sql", os.Getpid())
+
+	if err := sshClient.UploadFile(tmpDBPath, remoteDBPath); err != nil {
+		return fmt.Errorf("failed to upload database: %w", err)
+	}
+	defer sshClient.RemoveFile(remoteDBPath) // Clean up remote temp file
+	ui.Success("Database uploaded")
+
+	// Import database on WPEngine
+	ui.Info("Importing database on WPEngine...")
+	if err := sshClient.ImportDatabase(remoteDBPath); err != nil {
+		return fmt.Errorf("database import failed: %w", err)
+	}
+	ui.Success("Database imported")
+
+	// Run search-replace on WPEngine unless skipped
+	if !dbSkipReplace {
+		ui.Info("Running search-replace on WPEngine...")
+
+		// Get source and target URLs
+		sourceURL := getDDEVURL(cfg)
+		targetURL := getTargetURL(cfg, dbEnvironment)
+
+		ui.Info(fmt.Sprintf("  Replacing: %s -> %s", sourceURL, targetURL))
+
+		// Run search-replace via WP-CLI on remote
+		searchReplaceCmd := fmt.Sprintf("wp search-replace '%s' '%s' --all-tables --skip-columns=guid", sourceURL, targetURL)
+		output, err := sshClient.ExecuteCommand(searchReplaceCmd)
+		if err != nil {
+			ui.Warning(fmt.Sprintf("Search-replace failed: %v", err))
+			ui.Info("Database imported but URLs may not be correct")
+		} else {
+			ui.Success("URLs updated successfully")
+			ui.Verbose(output)
+		}
+	}
+
+	// Flush cache on WPEngine
+	ui.Info("Flushing WordPress cache on WPEngine...")
+	if _, err := sshClient.ExecuteCommand("wp cache flush"); err != nil {
+		ui.Warning(fmt.Sprintf("Cache flush failed: %v", err))
+	} else {
+		ui.Success("Cache flushed")
+	}
+
+	ui.Success("\nDatabase push completed!")
+	ui.Info(fmt.Sprintf("Database successfully pushed to %s environment", dbEnvironment))
+
+	return nil
+}
+
+// getTargetURL returns the target WPEngine URL for the given environment
+func getTargetURL(cfg *config.Config, environment string) string {
+	install := cfg.WPEngine.Install
+
+	if environment == "production" {
+		// Check if custom domain is configured
+		if cfg.WPEngine.Domains.Production.Primary != "" {
+			return "https://" + cfg.WPEngine.Domains.Production.Primary
+		}
+		// Default production URL pattern
+		return fmt.Sprintf("https://%s.wpengine.com", install)
+	} else if environment == "staging" {
+		// Check if custom domain is configured
+		if cfg.WPEngine.Domains.Staging.Primary != "" {
+			return "https://" + cfg.WPEngine.Domains.Staging.Primary
+		}
+		// Default staging URL pattern
+		return fmt.Sprintf("https://%s.wpengineurl.com", install)
+	}
+
+	// Fallback to staging pattern
+	return fmt.Sprintf("https://%s.wpengineurl.com", install)
 }
 
 // loadConfigForCommand is now defined in files.go to avoid duplication
