@@ -20,24 +20,26 @@ import (
 )
 
 var (
-	initName            string
-	initType            string
-	initMode            string
-	initPHPVersion      string
-	initMySQLVersion    string
-	initRepo            string
-	initBranch          string
-	initWPEngineInstall string
-	initWPEngineEnv     string
-	initInteractive     bool
-	initSkipDB          bool
-	initSkipFiles       bool
-	initFromDDEV        bool
-	initTemplate        bool
-	initShowExample     bool
-	initStart           bool
-	initPullDB          bool
-	initPullFiles       bool
+	initName             string
+	initType             string
+	initMode             string
+	initPHPVersion       string
+	initMySQLVersion     string
+	initRepo             string
+	initBranch           string
+	initWPEngineInstall  string
+	initWPEngineEnv      string
+	initInteractive      bool
+	initSkipDB           bool
+	initSkipFiles        bool
+	initFromDDEV         bool
+	initTemplate         bool
+	initShowExample      bool
+	initStart            bool
+	initPullDB           bool
+	initPullFiles        bool
+	initSkipWordPress    bool
+	initWordPressVersion string
 )
 
 // initCmd represents the init command
@@ -57,6 +59,8 @@ For new projects, this will:
   - Clone the GitHub repository (if specified)
   - Generate DDEV configuration
   - Start DDEV containers (optional)
+  - Download WordPress core files (optional)
+  - Generate wp-config.php (optional)
   - Pull database and files from WPEngine (optional)
 
 By default, this command runs in interactive mode, prompting for all
@@ -114,6 +118,8 @@ func init() {
 	initCmd.Flags().BoolVar(&initPullFiles, "pull-files", false, "pull files after initialization")
 	initCmd.Flags().BoolVar(&initSkipDB, "skip-db", false, "skip database operations")
 	initCmd.Flags().BoolVar(&initSkipFiles, "skip-files", false, "skip file operations")
+	initCmd.Flags().BoolVar(&initSkipWordPress, "skip-wordpress", false, "skip WordPress core download")
+	initCmd.Flags().StringVar(&initWordPressVersion, "wordpress-version", "", "WordPress version to download (default: latest)")
 
 	// Special modes
 	initCmd.Flags().BoolVar(&initFromDDEV, "from-ddev", false, "import existing DDEV project")
@@ -210,16 +216,33 @@ func runFullInit(projectDir string) error {
 		spinner.Success("DDEV started successfully")
 
 		// Step 8a: Download WordPress core if needed
-		if !hasWordPressCore(projectDir) {
-			ui.Section("Setting Up WordPress")
-			if err := downloadWordPressCore(projectDir, cfg); err != nil {
-				ui.Warning(fmt.Sprintf("Failed to download WordPress core: %v", err))
-				ui.Info("You can download manually: ddev wp core download")
+		if !initSkipWordPress {
+			if hasWordPressCore(projectDir) {
+				ui.Section("WordPress Core")
+				ui.Info("WordPress core files already exist, skipping download")
+			} else {
+				ui.Section("Setting Up WordPress")
+
+				// Determine version to download
+				version := "latest"
+				if initWordPressVersion != "" {
+					version = initWordPressVersion
+					cfg.WordPress.Version = version
+				} else if cfg.WordPress.Version != "" {
+					version = cfg.WordPress.Version
+				}
+
+				if err := downloadWordPressCore(projectDir, version); err != nil {
+					ui.Warning(fmt.Sprintf("Failed to download WordPress core: %v", err))
+					ui.Info("You can download manually: ddev wp core download")
+				}
 			}
+		} else {
+			ui.Info("Skipping WordPress core download (--skip-wordpress flag set)")
 		}
 
 		// Step 8b: Generate wp-config.php if needed
-		if !hasWordPressConfig(projectDir) {
+		if !initSkipWordPress && !hasWordPressConfig(projectDir) {
 			if err := generateWordPressConfig(projectDir, cfg); err != nil {
 				ui.Warning(fmt.Sprintf("Failed to generate wp-config.php: %v", err))
 				ui.Info("You can create manually: ddev wp config create --dbname=db --dbuser=db --dbpass=db --dbhost=db")
