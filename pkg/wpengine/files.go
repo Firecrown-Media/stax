@@ -1,6 +1,7 @@
 package wpengine
 
 import (
+	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -53,16 +54,35 @@ func (c *SSHClient) Rsync(options SyncOptions) error {
 		"--size-only",
 	}
 
+	// Preserve permissions if requested
+	if options.PreservePermissions {
+		args = append(args, "-p")
+	}
+
 	// Add progress if requested
 	if options.Progress {
 		args = append(args, "--progress")
 	}
 
-	// Add exclusions with validation
+	// Build exclusion list starting with defaults
 	exclusions := options.Exclude
 	if len(exclusions) == 0 {
 		exclusions = DefaultRsyncExclusions
 	}
+
+	// Load .staxignore patterns if ProjectDir is set
+	if options.ProjectDir != "" {
+		staxignorePatterns, err := LoadStaxIgnore(options.ProjectDir)
+		if err != nil {
+			// Log warning but continue - .staxignore errors are not fatal
+			fmt.Fprintf(os.Stderr, "Warning: failed to load .staxignore: %v\n", err)
+		} else if len(staxignorePatterns) > 0 {
+			// Merge .staxignore patterns with existing exclusions
+			exclusions = append(exclusions, staxignorePatterns...)
+		}
+	}
+
+	// Add exclusions with validation
 	for _, pattern := range exclusions {
 		// Validate rsync pattern to prevent command injection
 		if err := security.ValidateRsyncPattern(pattern); err != nil {
@@ -132,6 +152,53 @@ func (c *SSHClient) Rsync(options SyncOptions) error {
 // GetExcludePatterns returns default exclusion patterns
 func GetExcludePatterns() []string {
 	return DefaultRsyncExclusions
+}
+
+// LoadStaxIgnore loads .staxignore patterns from the project directory
+// Returns an empty slice if the file doesn't exist (not an error)
+func LoadStaxIgnore(projectDir string) ([]string, error) {
+	// Build path to .staxignore
+	staxignorePath := filepath.Join(projectDir, ".staxignore")
+
+	// Check if file exists
+	if _, err := os.Stat(staxignorePath); os.IsNotExist(err) {
+		// File doesn't exist, return empty slice (not an error)
+		return []string{}, nil
+	}
+
+	// Open file
+	file, err := os.Open(staxignorePath)
+	if err != nil {
+		// Only return error for actual read failures
+		return []string{}, fmt.Errorf("failed to open .staxignore: %w", err)
+	}
+	defer file.Close()
+
+	// Parse patterns
+	var patterns []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Validate pattern to prevent command injection
+		if err := security.ValidateRsyncPattern(line); err != nil {
+			// Skip invalid patterns but log warning
+			continue
+		}
+
+		patterns = append(patterns, line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return patterns, fmt.Errorf("failed to read .staxignore: %w", err)
+	}
+
+	return patterns, nil
 }
 
 // VerifyFileIntegrity verifies rsync completion by comparing file counts

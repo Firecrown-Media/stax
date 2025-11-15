@@ -58,14 +58,16 @@ type DatabaseOptions struct {
 
 // SyncOptions represents file synchronization options
 type SyncOptions struct {
-	Source         string
-	Destination    string
-	Include        []string
-	Exclude        []string
-	Delete         bool
-	DryRun         bool
-	BandwidthLimit int // KB/s
-	Progress       bool
+	Source              string
+	Destination         string
+	Include             []string
+	Exclude             []string
+	Delete              bool
+	DryRun              bool
+	BandwidthLimit      int // KB/s
+	Progress            bool
+	PreservePermissions bool   // Preserve file permissions during sync
+	ProjectDir          string // Project directory for loading .staxignore
 }
 
 // ExportOptions represents database export options

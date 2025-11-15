@@ -20,15 +20,18 @@ var filesCmd = &cobra.Command{
 }
 
 var (
-	filesEnvironment    string
-	filesThemesOnly     bool
-	filesPluginsOnly    bool
-	filesExcludeUploads bool
-	filesDryRun         bool
-	filesDelete         bool
-	filesBandwidthLimit int
-	filesInclude        string
-	filesExclude        string
+	filesEnvironment         string
+	filesThemesOnly          bool
+	filesPluginsOnly         bool
+	filesMuPluginsOnly       bool
+	filesExcludeUploads      bool
+	filesDryRun              bool
+	filesDelete              bool
+	filesBandwidthLimit      int
+	filesInclude             string
+	filesExclude             string
+	filesVerify              bool
+	filesPreservePermissions bool
 )
 
 // filesPullCmd represents the files:pull command
@@ -54,6 +57,9 @@ limit the sync to specific directories like themes or plugins.`,
   # Pull only plugins
   stax files pull --plugins-only
 
+  # Pull only mu-plugins
+  stax files pull --mu-plugins-only
+
   # Pull without uploads directory
   stax files pull --exclude-uploads
 
@@ -69,6 +75,9 @@ limit the sync to specific directories like themes or plugins.`,
   # Limit bandwidth to 1000 KB/s
   stax files pull --bandwidth-limit=1000
 
+  # Preserve file permissions
+  stax files pull --preserve-permissions
+
   # Custom includes and excludes
   stax files pull --include="*.php,*.js" --exclude="*.log,cache/"`,
 	RunE: runFilesPull,
@@ -82,12 +91,15 @@ func init() {
 	filesPullCmd.Flags().StringVar(&filesEnvironment, "environment", "", "WPEngine environment (default: from config)")
 	filesPullCmd.Flags().BoolVar(&filesThemesOnly, "themes-only", false, "sync only themes directory")
 	filesPullCmd.Flags().BoolVar(&filesPluginsOnly, "plugins-only", false, "sync only plugins directory")
+	filesPullCmd.Flags().BoolVar(&filesMuPluginsOnly, "mu-plugins-only", false, "sync only mu-plugins directory")
 	filesPullCmd.Flags().BoolVar(&filesExcludeUploads, "exclude-uploads", false, "exclude uploads directory")
 	filesPullCmd.Flags().BoolVar(&filesDryRun, "dry-run", false, "show what would be transferred without syncing")
 	filesPullCmd.Flags().BoolVar(&filesDelete, "delete", false, "delete local files not present on remote")
 	filesPullCmd.Flags().IntVar(&filesBandwidthLimit, "bandwidth-limit", 0, "bandwidth limit in KB/s (0 = unlimited)")
 	filesPullCmd.Flags().StringVar(&filesInclude, "include", "", "comma-separated patterns to include")
 	filesPullCmd.Flags().StringVar(&filesExclude, "exclude", "", "comma-separated patterns to exclude")
+	filesPullCmd.Flags().BoolVar(&filesVerify, "verify", false, "verify file checksums after sync (slower for large sites)")
+	filesPullCmd.Flags().BoolVar(&filesPreservePermissions, "preserve-permissions", false, "preserve file permissions during sync")
 }
 
 func runFilesPull(cmd *cobra.Command, args []string) error {
@@ -157,6 +169,10 @@ func runFilesPull(cmd *cobra.Command, args []string) error {
 		ui.Info("Syncing plugins only...")
 		remotePath = fmt.Sprintf("/sites/%s/wp-content/plugins/", cfg.WPEngine.Install)
 		localPath = getProjectDir() + "/wp-content/plugins/"
+	} else if filesMuPluginsOnly {
+		ui.Info("Syncing mu-plugins only...")
+		remotePath = fmt.Sprintf("/sites/%s/wp-content/mu-plugins/", cfg.WPEngine.Install)
+		localPath = getProjectDir() + "/wp-content/mu-plugins/"
 	} else {
 		ui.Info("Syncing wp-content directory...")
 		remotePath = fmt.Sprintf("/sites/%s/wp-content/", cfg.WPEngine.Install)
@@ -184,6 +200,25 @@ func runFilesPull(cmd *cobra.Command, args []string) error {
 		} else {
 			ui.Success("File integrity verified")
 		}
+
+		// Perform checksum verification if requested
+		if filesVerify {
+			ui.Section("Checksum Verification")
+			ui.Info("Generating checksums (this may take a while for large sites)...")
+
+			spinner := ui.NewSpinner("Verifying checksums...")
+			spinner.Start()
+
+			result, err := sshClient.VerifyFileChecksums(remotePath, localPath)
+			spinner.Stop()
+
+			if err != nil {
+				ui.Warning(fmt.Sprintf("Checksum verification failed: %v", err))
+			} else {
+				// Print verification results
+				printChecksumResults(result)
+			}
+		}
 	} else {
 		ui.Info("Dry run completed")
 	}
@@ -196,12 +231,14 @@ func runFilesPull(cmd *cobra.Command, args []string) error {
 // buildSyncOptions builds rsync sync options from command flags
 func buildSyncOptions(cfg *config.Config) wpengine.SyncOptions {
 	options := wpengine.SyncOptions{
-		DryRun:         filesDryRun,
-		Delete:         filesDelete,
-		BandwidthLimit: filesBandwidthLimit,
-		Progress:       true,
-		Include:        []string{},
-		Exclude:        wpengine.GetExcludePatterns(),
+		DryRun:              filesDryRun,
+		Delete:              filesDelete,
+		BandwidthLimit:      filesBandwidthLimit,
+		Progress:            true,
+		PreservePermissions: filesPreservePermissions,
+		Include:             []string{},
+		Exclude:             wpengine.GetExcludePatterns(),
+		ProjectDir:          getProjectDir(), // Enable .staxignore support
 	}
 
 	// Add custom includes
@@ -235,4 +272,59 @@ func loadConfigForCommand() (*config.Config, error) {
 		return nil, errors.NewConfigNotFoundError(cfgFile, err)
 	}
 	return cfg, nil
+}
+
+// printChecksumResults prints the results of checksum verification
+func printChecksumResults(result *wpengine.ChecksumResult) {
+	// Print summary
+	ui.Info(fmt.Sprintf("Total files checked: %d", result.TotalFiles))
+	ui.Success(fmt.Sprintf("Matched files: %d", result.MatchedFiles))
+
+	// Print mismatches if any
+	if result.MismatchedFiles > 0 {
+		ui.Warning(fmt.Sprintf("Mismatched checksums: %d", result.MismatchedFiles))
+		ui.Info("Files with different checksums:")
+		for i, mismatch := range result.Mismatches {
+			if i >= 10 {
+				ui.Info(fmt.Sprintf("  ... and %d more", len(result.Mismatches)-10))
+				break
+			}
+			ui.Info(fmt.Sprintf("  - %s", mismatch.RelativePath))
+			ui.Verbose(fmt.Sprintf("    Remote: %s", mismatch.RemoteChecksum))
+			ui.Verbose(fmt.Sprintf("    Local:  %s", mismatch.LocalChecksum))
+		}
+	}
+
+	// Print missing local files if any
+	if result.MissingLocal > 0 {
+		ui.Warning(fmt.Sprintf("Missing locally: %d", result.MissingLocal))
+		ui.Info("Files that exist remotely but not locally:")
+		for i, file := range result.MissingLocally {
+			if i >= 10 {
+				ui.Info(fmt.Sprintf("  ... and %d more", len(result.MissingLocally)-10))
+				break
+			}
+			ui.Info(fmt.Sprintf("  - %s", file))
+		}
+	}
+
+	// Print missing remote files if any
+	if result.MissingRemote > 0 {
+		ui.Warning(fmt.Sprintf("Missing remotely: %d", result.MissingRemote))
+		ui.Info("Files that exist locally but not remotely:")
+		for i, file := range result.MissingRemotely {
+			if i >= 10 {
+				ui.Info(fmt.Sprintf("  ... and %d more", len(result.MissingRemotely)-10))
+				break
+			}
+			ui.Info(fmt.Sprintf("  - %s", file))
+		}
+	}
+
+	// Final verdict
+	if result.MismatchedFiles == 0 && result.MissingLocal == 0 && result.MissingRemote == 0 {
+		ui.Success("All files verified successfully - checksums match!")
+	} else {
+		ui.Warning("Some files have checksum differences - review the details above")
+	}
 }

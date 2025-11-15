@@ -462,45 +462,68 @@ func (m *Manager) PullAndImport(ctx context.Context, env string) error {
 
 ## Planned Phases (Roadmap)
 
-### Phase 7: Enhanced File Operations 🟡
+### Phase 7: Enhanced File Operations ✅
 
 **Priority:** High
 **GitHub:** [Issue #54](https://github.com/Firecrown-Media/stax/issues/54)
-**Estimated Effort:** 1-2 days
-**Dependencies:** None
+**Version:** 2.6.0
+**Completed:** 2025-11-15
 
-#### Overview
+#### What Was Implemented
 
-Enhance file synchronization capabilities with selective sync, exclude patterns, and better progress reporting.
+Enhanced file synchronization with four major improvements to production parity and developer experience.
 
-#### Planned Features
+1. **File Permission Preservation**
+   - Added `--preserve-permissions` flag to `stax files pull`
+   - Uses rsync `-p` flag to maintain file permissions
+   - Essential for executable files and security-sensitive files
+   - Maintains exact production file permissions locally
 
-1. **Selective File Sync**
-   - Sync specific directories (themes, plugins, uploads)
-   - Flag-based directory selection
-   - Smart defaults for common patterns
+2. **MU-Plugins Sync Support**
+   - Added `--mu-plugins-only` flag for selective sync
+   - Syncs only `wp-content/mu-plugins/` directory
+   - Follows same pattern as `--themes-only` and `--plugins-only`
+   - Enables faster sync for must-use plugins
 
-2. **Exclude Patterns**
-   - Configurable exclude patterns
-   - Default exclusions for node_modules, .git, etc.
-   - Pattern validation and testing
+3. **.staxignore Support**
+   - Gitignore-style exclusion file for project-specific patterns
+   - Automatically loaded from project root if exists
+   - Supports comments (`#`) and empty lines
+   - Merges with default exclude patterns
+   - Security validated to prevent command injection
+   - Example patterns: `*.dev.php`, `node_modules/`, `temp/`
 
-3. **Progress Reporting**
-   - Real-time file transfer progress
-   - Transfer statistics (files, size, speed)
-   - Visual progress bars
+4. **Checksum Verification**
+   - Added `--verify` flag for post-sync validation
+   - Compares MD5 checksums between remote and local
+   - Reports matched, mismatched, and missing files
+   - Catches incomplete or corrupted transfers
+   - Performance optimized for large sites
 
-4. **Dry Run Mode**
-   - Preview what would be synced
-   - Estimate transfer size and time
-   - Safety check before large transfers
+#### Key Achievements
 
-#### Success Criteria
+- Resolved GitHub Issue #54
+- Production parity improved with permission preservation
+- Flexible exclude system with .staxignore
+- Transfer verification ensures data integrity
+- Complete mu-plugins workflow support
 
-- Selective sync flags work correctly
-- Exclude patterns prevent unwanted transfers
-- Progress reporting provides useful feedback
-- Dry run mode accurately predicts transfers
+#### Files Modified/Created
+
+- `cmd/files.go` - New flags and verification logic
+- `pkg/wpengine/types.go` - Enhanced SyncOptions struct
+- `pkg/wpengine/files.go` - Permission, .staxignore, path logic
+- `pkg/wpengine/checksum.go` - NEW: Checksum verification implementation
+- `pkg/wpengine/checksum_test.go` - NEW: Comprehensive test coverage
+
+#### Success Metrics
+
+- ✅ File permissions preserved correctly
+- ✅ MU-plugins selective sync works
+- ✅ .staxignore patterns respected
+- ✅ Checksum verification catches issues
+- ✅ All tests passing
+- ✅ Documentation updated
 
 ---
 
