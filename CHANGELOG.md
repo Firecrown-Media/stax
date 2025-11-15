@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.0](https://github.com/Firecrown-Media/stax/compare/v2.4.0...v2.5.0) (2025-11-15)
+
+
+### Features
+
+* Phase 12 - WordPress Core Download & wp-config Generation ([#64](https://github.com/Firecrown-Media/stax/issues/64)) ([e0e9cbd](https://github.com/Firecrown-Media/stax/commit/e0e9cbd93f53a7b1957bd7a25b342cf422a47268))
+
 ## [2.4.0](https://github.com/Firecrown-Media/stax/compare/v2.3.0...v2.4.0) (2025-11-15)
 
 
