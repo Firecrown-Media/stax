@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.8.0](https://github.com/Firecrown-Media/stax/compare/v2.7.0...v2.8.0) (2025-11-15)
+
+
+### Features
+
+* **doctor:** implement Phase 11 enhanced diagnostics ([#70](https://github.com/Firecrown-Media/stax/issues/70)) ([3540d27](https://github.com/Firecrown-Media/stax/commit/3540d27c473e9156c5925e5fe208dd5d3c4d079c))
+
 ## [2.7.0](https://github.com/Firecrown-Media/stax/compare/v2.6.0...v2.7.0) (2025-11-15)
 
 
