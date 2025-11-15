@@ -1,0 +1,71 @@
+version: 1
+project:
+    name: stax-cli
+    type: wordpress-multisite
+    mode: subdomain
+    description: Stax WordPress CLI Tool
+wpengine:
+    install: staxtest
+    environment: production
+    account_name: testaccount
+    ssh_gateway: ssh.wpengine.net
+    backup:
+        auto_snapshot: true
+        skip_logs: true
+        skip_transients: true
+        skip_spam: true
+network:
+    domain: stax.ddev.site
+    title: Stax Development Network
+ddev:
+    php_version: "8.1"
+    mysql_version: "8.0"
+    mysql_type: mysql
+    webserver_type: nginx-fpm
+    router_http_port: "80"
+    router_https_port: "443"
+    mailhog_port: "8025"
+    nfs_mount_enabled: false
+    mutagen_enabled: false
+    xdebug_enabled: false
+    nodejs_version: "20"
+    composer_version: "2"
+repository:
+    url: https://github.com/firecrown-media/stax.git
+    branch: main
+    private: true
+    depth: 1
+    submodules: false
+wordpress:
+    version: latest
+    locale: en_US
+    table_prefix: wp_
+media:
+    proxy_enabled: true
+    wpengine_fallback: true
+    cache:
+        enabled: true
+        directory: .stax/media-cache
+        max_size: 1GB
+        ttl: 86400
+logging:
+    level: info
+    file: ~/.stax/logs/stax.log
+    max_size: 10MB
+    max_backups: 5
+    max_age: 30
+    format: json
+    timestamp: true
+    caller: false
+snapshots:
+    directory: ~/.stax/snapshots
+    auto_snapshot_before_pull: true
+    auto_snapshot_before_import: true
+    retention:
+        auto: 7
+        manual: 30
+    compression: gzip
+performance:
+    parallel_downloads: 4
+    rsync_bandwidth_limit: 0
+    database_import_batch_size: 1000
