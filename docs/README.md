@@ -8,6 +8,7 @@ Welcome to the Stax CLI documentation. This guide helps you navigate all availab
 - **Installing Stax?** See [Installation Guide](INSTALLATION.md)
 - **Need help?** Check [Troubleshooting](TROUBLESHOOTING.md) or [FAQ](FAQ.md)
 - **Looking for commands?** See [Command Reference](COMMAND_REFERENCE.md)
+- **Contributing?** Check [Implementation Roadmap](IMPLEMENTATION_ROADMAP.md) for planned work
 
 ## Documentation by User Journey
 
@@ -71,6 +72,7 @@ Technical documentation for those working on Stax itself:
 - [Testing Guide](TESTING.md) - Writing and running tests
 
 #### Project Status & History
+- [Implementation Roadmap](IMPLEMENTATION_ROADMAP.md) - Current progress and planned phases
 - [Project Summary](development/PROJECT_SUMMARY.md) - Complete project overview
 - [Implementation Summary](development/IMPLEMENTATION_SUMMARY.md) - What was built
 - [Completion Summary](development/COMPLETION_SUMMARY.md) - Final delivery status
@@ -117,6 +119,7 @@ In-depth technical documentation for system internals:
 
 Project status, history, and internal development docs:
 
+- [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) - **Active roadmap** with planned phases and timeline
 - [PROJECT_SUMMARY.md](development/PROJECT_SUMMARY.md) - Complete project overview and statistics
 - [IMPLEMENTATION_SUMMARY.md](development/IMPLEMENTATION_SUMMARY.md) - Implementation details
 - [COMPLETION_SUMMARY.md](development/COMPLETION_SUMMARY.md) - Final delivery status

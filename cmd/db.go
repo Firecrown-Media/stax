@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/firecrown-media/stax/pkg/credentials"
+	"github.com/firecrown-media/stax/pkg/ddev"
 	"github.com/firecrown-media/stax/pkg/errors"
 	"github.com/firecrown-media/stax/pkg/ui"
+	"github.com/firecrown-media/stax/pkg/wordpress"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +41,7 @@ This command will:
   - Export the database from WPEngine
   - Transfer the database to local environment
   - Import into local DDEV database
-  - Run search-replace operations
+  - Run search-replace operations (unless --skip-replace)
   - Flush WordPress cache`,
 	Example: `  # Basic pull
   stax db pull
@@ -49,6 +51,9 @@ This command will:
 
   # Pull without creating snapshot
   stax db pull --snapshot=false
+
+  # Pull without automatic URL replacement (advanced users)
+  stax db pull --skip-replace
 
   # Pull with sanitized data
   stax db pull --sanitize`,
@@ -63,7 +68,7 @@ func init() {
 	dbPullCmd.Flags().StringVar(&dbEnvironment, "environment", "", "WPEngine environment (default: from config)")
 	dbPullCmd.Flags().BoolVar(&dbSnapshot, "snapshot", true, "create snapshot before import")
 	dbPullCmd.Flags().BoolVar(&dbSanitize, "sanitize", false, "sanitize user data")
-	dbPullCmd.Flags().BoolVar(&dbSkipReplace, "skip-replace", false, "skip search-replace")
+	dbPullCmd.Flags().BoolVar(&dbSkipReplace, "skip-replace", false, "skip automatic URL search-replace")
 	dbPullCmd.Flags().StringVar(&dbExcludeTables, "exclude-tables", "", "comma-separated tables to exclude")
 	dbPullCmd.Flags().BoolVar(&dbSkipLogs, "skip-logs", true, "skip log tables")
 	dbPullCmd.Flags().BoolVar(&dbSkipTransients, "skip-transients", true, "skip transient tables")
@@ -101,6 +106,17 @@ func runDBPull(cmd *cobra.Command, args []string) error {
 	_ = creds
 	_ = sshKey
 
+	// Check if DDEV is running
+	projectDir := getProjectDir()
+	mgr := ddev.NewManager(projectDir)
+	running, err := mgr.IsRunning()
+	if err != nil {
+		return fmt.Errorf("failed to check DDEV status: %w", err)
+	}
+	if !running {
+		return fmt.Errorf("DDEV must be running to import database. Please run 'stax start' first")
+	}
+
 	// Create snapshot if requested
 	if dbSnapshot {
 		ui.Info("Creating database snapshot...")
@@ -116,24 +132,46 @@ func runDBPull(cmd *cobra.Command, args []string) error {
 	// Export database
 	ui.Info("Exporting database from WPEngine...")
 	// TODO: Use SSHClient.ExportDatabase with options
+	dbPath := "/tmp/wpengine-db.sql" // TODO: Get actual path from export
 	ui.Success("Database exported")
 
 	// Import to local database
 	ui.Info("Importing database to local environment...")
-	// TODO: Use wordpress.CLI.ImportDatabase
+	if err := mgr.ImportDB(dbPath); err != nil {
+		return fmt.Errorf("database import failed: %w", err)
+	}
 	ui.Success("Database imported")
 
 	// Run search-replace unless skipped
 	if !dbSkipReplace {
-		ui.Info("Running search-replace operations...")
-		// TODO: Use wordpress.CLI.MultisiteSearchReplace
-		ui.Success("Search-replace completed")
+		ui.Info("Replacing URLs...")
+
+		// Get source and target URLs
+		sourceURL := getWPEngineURL(cfg)
+		targetURL := getDDEVURL(cfg)
+
+		// Run search-replace
+		if err := runSearchReplace(projectDir, sourceURL, targetURL, cfg); err != nil {
+			ui.Warning(fmt.Sprintf("URL replacement failed: %v", err))
+			ui.Info("You may need to run manually: ddev wp search-replace '%s' '%s' --all-tables", sourceURL, targetURL)
+		} else {
+			ui.Success("URLs replaced successfully")
+		}
+	} else {
+		ui.Info("Skipping URL replacement (--skip-replace flag set)")
+		sourceURL := getWPEngineURL(cfg)
+		targetURL := getDDEVURL(cfg)
+		ui.Info("To replace URLs manually, run: ddev wp search-replace '%s' '%s' --all-tables", sourceURL, targetURL)
 	}
 
 	// Flush cache
 	ui.Info("Flushing WordPress cache...")
-	// TODO: Use wordpress.CLI.FlushCache
-	ui.Success("Cache flushed")
+	cli := wordpress.NewCLI(projectDir)
+	if err := cli.FlushCache(); err != nil {
+		ui.Warning(fmt.Sprintf("Cache flush failed: %v", err))
+	} else {
+		ui.Success("Cache flushed")
+	}
 
 	ui.Success("\nDatabase pull completed!")
 
