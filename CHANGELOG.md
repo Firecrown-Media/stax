@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.0](https://github.com/Firecrown-Media/stax/compare/v2.5.0...v2.6.0) (2025-11-15)
+
+
+### Features
+
+* Phase 7 - Enhanced File Operations ([#66](https://github.com/Firecrown-Media/stax/issues/66)) ([ed2d84e](https://github.com/Firecrown-Media/stax/commit/ed2d84e8d385b59506ef37258e9e53fb0fef9dfa))
+
 ## [2.5.0](https://github.com/Firecrown-Media/stax/compare/v2.4.0...v2.5.0) (2025-11-15)
 
 
