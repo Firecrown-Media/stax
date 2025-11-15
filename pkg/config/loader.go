@@ -166,6 +166,9 @@ func mergeConfigs(base, override *Config) *Config {
 	if override.Network.Title != "" {
 		result.Network.Title = override.Network.Title
 	}
+	if override.Network.AdminEmail != "" {
+		result.Network.AdminEmail = override.Network.AdminEmail
+	}
 	if len(override.Network.Sites) > 0 {
 		result.Network.Sites = override.Network.Sites
 	}
