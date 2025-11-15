@@ -242,3 +242,56 @@ func (c *SSHClient) GetTableCount() (int, error) {
 
 	return count, nil
 }
+
+// ImportDatabase imports a database file on the remote server
+func (c *SSHClient) ImportDatabase(remotePath string) error {
+	// Validate and sanitize remote path
+	sanitizedPath, err := security.SanitizePath(remotePath)
+	if err != nil {
+		return fmt.Errorf("invalid remote path: %w", err)
+	}
+
+	// Sanitize for shell
+	safePath, err := security.SanitizeForShell(sanitizedPath)
+	if err != nil {
+		return fmt.Errorf("remote path contains unsafe characters: %w", err)
+	}
+
+	// Import database using wp db import
+	cmd := fmt.Sprintf("wp db import %s", safePath)
+	output, err := c.ExecuteCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("database import failed: %w", err)
+	}
+
+	// Check for success message
+	if !strings.Contains(output, "Success") {
+		return fmt.Errorf("database import did not report success: %s", output)
+	}
+
+	return nil
+}
+
+// RemoveFile removes a file from the remote server
+func (c *SSHClient) RemoveFile(remotePath string) error {
+	// Validate and sanitize remote path
+	sanitizedPath, err := security.SanitizePath(remotePath)
+	if err != nil {
+		return fmt.Errorf("invalid remote path: %w", err)
+	}
+
+	// Sanitize for shell
+	safePath, err := security.SanitizeForShell(sanitizedPath)
+	if err != nil {
+		return fmt.Errorf("remote path contains unsafe characters: %w", err)
+	}
+
+	// Remove the file
+	cmd := fmt.Sprintf("rm -f %s", safePath)
+	_, err = c.ExecuteCommand(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to remove file: %w", err)
+	}
+
+	return nil
+}

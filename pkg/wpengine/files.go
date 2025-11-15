@@ -365,3 +365,37 @@ func (c *SSHClient) SyncDirectory(remotePath, localPath string, options SyncOpti
 
 	return c.Rsync(options)
 }
+
+// PushDirectory pushes a local directory to WPEngine (reverse of SyncDirectory)
+func (c *SSHClient) PushDirectory(localPath, remotePath string, options SyncOptions) error {
+	// Validate and sanitize local path
+	sanitizedLocalPath, err := security.SanitizePath(localPath)
+	if err != nil {
+		return fmt.Errorf("invalid local path: %w", err)
+	}
+
+	// Validate and sanitize remote path
+	sanitizedRemotePath, err := security.SanitizePath(remotePath)
+	if err != nil {
+		return fmt.Errorf("invalid remote path: %w", err)
+	}
+
+	// Validate local path exists
+	if _, err := os.Stat(sanitizedLocalPath); err != nil {
+		return fmt.Errorf("local path does not exist: %w", err)
+	}
+
+	// Build full remote path (destination)
+	destination := fmt.Sprintf("%s@%s@%s:%s",
+		c.config.Install,
+		c.config.Install,
+		c.config.Host,
+		sanitizedRemotePath,
+	)
+
+	// Set source as local and destination as remote (reversed from pull)
+	options.Source = sanitizedLocalPath
+	options.Destination = destination
+
+	return c.Rsync(options)
+}
