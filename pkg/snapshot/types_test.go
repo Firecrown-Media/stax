@@ -294,7 +294,7 @@ func TestGetSnapshotsByProject(t *testing.T) {
 
 func TestGetOldSnapshots(t *testing.T) {
 	now := time.Now()
-	oldTime := now.AddDate(0, 0, -10) // 10 days ago
+	oldTime := now.AddDate(0, 0, -10)   // 10 days ago
 	recentTime := now.AddDate(0, 0, -3) // 3 days ago
 
 	store := &MetadataStore{
