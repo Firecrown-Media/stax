@@ -96,7 +96,7 @@ brews:
 release:
   github:
     owner: firecrown-media
-    name: stax
+    name: stax-public
 
   draft: false
   prerelease: auto
