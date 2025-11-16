@@ -97,6 +97,7 @@ release:
   github:
     owner: firecrown-media
     name: stax-public
+    token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
 
   draft: false
   prerelease: auto
