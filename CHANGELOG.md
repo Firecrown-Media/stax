@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.12.0](https://github.com/Firecrown-Media/stax/compare/v2.11.0...v2.12.0) (2025-11-16)
+
+
+### Features
+
+* implement hybrid public mirror for private development ([#81](https://github.com/Firecrown-Media/stax/issues/81)) ([6a1bbf6](https://github.com/Firecrown-Media/stax/commit/6a1bbf6a294b17ccc9e9934173c7d5db33664770))
+
 ## [2.11.0](https://github.com/Firecrown-Media/stax/compare/v2.10.0...v2.11.0) (2025-11-16)
 
 
