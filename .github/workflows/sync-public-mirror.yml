@@ -60,6 +60,7 @@ jobs:
 
           # Remove GitHub workflows (not needed in public mirror, causes deploy key issues)
           rm -rf .github/workflows/
+          git rm -rf --cached .github/workflows/ 2>/dev/null || true
 
           # List remaining files for verification
           echo "Remaining files after cleanup:"
