@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.12.3](https://github.com/Firecrown-Media/stax/compare/v2.12.2...v2.12.3) (2025-11-16)
+
+
+### Bug Fixes
+
+* **release:** use HOMEBREW_TAP_TOKEN for cross-repo GitHub releases ([97a2da4](https://github.com/Firecrown-Media/stax/commit/97a2da49d1b04a3ccccc50f6a84c150f570c4988))
+
 ## [2.12.2](https://github.com/Firecrown-Media/stax/compare/v2.12.1...v2.12.2) (2025-11-16)
 
 
