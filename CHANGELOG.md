@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.10.0](https://github.com/Firecrown-Media/stax/compare/v2.9.0...v2.10.0) (2025-11-16)
+
+
+### Features
+
+* **db:** implement comprehensive snapshot functionality ([#77](https://github.com/Firecrown-Media/stax/issues/77)) ([889cd8b](https://github.com/Firecrown-Media/stax/commit/889cd8bc0df4fc4b1f09da6b587eb0baae6095a9)), closes [#17](https://github.com/Firecrown-Media/stax/issues/17)
+
+
+### Bug Fixes
+
+* **config:** implement Build config merging in loader ([#74](https://github.com/Firecrown-Media/stax/issues/74)) ([2c27595](https://github.com/Firecrown-Media/stax/commit/2c27595374b9e123645a1b0bc852227c7ccbb79c)), closes [#10](https://github.com/Firecrown-Media/stax/issues/10)
+
 ## [2.9.0](https://github.com/Firecrown-Media/stax/compare/v2.8.0...v2.9.0) (2025-11-15)
 
 
