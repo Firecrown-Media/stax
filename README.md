@@ -465,6 +465,13 @@ stax config list
 stax restart
 ```
 
+**SSH fails with Warp terminal**
+```bash
+# Known issue: Warp terminal is incompatible with WPEngine SSH
+# Solution: Use alternative terminal (Terminal.app, iTerm2, etc.)
+# See: docs/TROUBLESHOOTING.md for details
+```
+
 **Full troubleshooting guide:** [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
 
 ## Getting Help

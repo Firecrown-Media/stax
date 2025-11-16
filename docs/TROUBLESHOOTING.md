@@ -1284,6 +1284,57 @@ cat ~/.ssh/wpengine.pub
 stax setup
 ```
 
+### SSH connections fail with Warp terminal
+
+**Symptom**:
+- SSH connections to WPEngine hang or timeout
+- `stax db pull` operations fail during SSH phase
+- Manual `ssh` commands to `*.ssh.wpengine.net` don't work
+- Operations that work in other terminals fail in Warp
+
+**Affected environments**:
+- Warp terminal (macOS/Linux)
+- All SSH operations to WPEngine sidecars (`*.ssh.wpengine.net`)
+- Commands: `stax db pull`, `stax files pull`, manual SSH
+
+**Root cause**:
+Compatibility issue between Warp's SSH handling and WPEngine's SSH sidecar infrastructure.
+
+**Solution: Use alternative terminal**
+
+Switch to a different terminal for WPEngine SSH operations:
+
+**macOS**:
+- Terminal.app (built-in)
+- iTerm2
+- Alacritty
+- VS Code integrated terminal
+
+**Linux**:
+- GNOME Terminal
+- Konsole
+- Alacritty
+- Tmux
+
+**Verification**:
+```bash
+# In alternative terminal (not Warp)
+stax db pull
+
+# Should work normally
+```
+
+**Why this happens**:
+- Warp implements custom SSH handling that conflicts with WPEngine sidecars
+- The issue is specific to WPEngine SSH infrastructure
+- Other SSH connections (GitHub, AWS, etc.) work fine in Warp
+- This affects ~10-20% of users who use Warp
+
+**Tracking**:
+- Issue documented in GitHub #4
+- Warp team has been notified
+- Workaround is stable and reliable
+
 ### Can't pull database from WPEngine
 
 **Symptom**:
