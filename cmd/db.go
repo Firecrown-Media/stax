@@ -9,6 +9,7 @@ import (
 	"github.com/firecrown-media/stax/pkg/credentials"
 	"github.com/firecrown-media/stax/pkg/ddev"
 	"github.com/firecrown-media/stax/pkg/errors"
+	"github.com/firecrown-media/stax/pkg/snapshot"
 	"github.com/firecrown-media/stax/pkg/ui"
 	"github.com/firecrown-media/stax/pkg/wordpress"
 	"github.com/firecrown-media/stax/pkg/wpengine"
@@ -162,11 +163,22 @@ func runDBPull(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("DDEV must be running to import database. Please run 'stax start' first")
 	}
 
-	// Create snapshot if requested
-	if dbSnapshot {
+	// Create snapshot if requested (or auto-snapshot is enabled)
+	shouldSnapshot := dbSnapshot || cfg.Snapshots.AutoSnapshotBeforePull
+	if shouldSnapshot {
 		ui.Info("Creating database snapshot...")
-		// TODO: Implement snapshot creation
-		ui.Success("Snapshot created")
+		snapMgr := snapshot.NewManager(cfg, projectDir)
+		snapType := "manual"
+		if cfg.Snapshots.AutoSnapshotBeforePull && !dbSnapshot {
+			snapType = "auto"
+		}
+		filename, err := snapMgr.CreateSnapshot(cfg.Project.Name, snapType)
+		if err != nil {
+			ui.Warning(fmt.Sprintf("Failed to create snapshot: %v", err))
+			ui.Info("Continuing with database pull...")
+		} else {
+			ui.Success(fmt.Sprintf("Snapshot created: %s", filename))
+		}
 	}
 
 	// Connect to WPEngine SSH Gateway
