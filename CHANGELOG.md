@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.0](https://github.com/Firecrown-Media/stax/compare/v2.10.0...v2.11.0) (2025-11-16)
+
+
+### Features
+
+* **ddev:** enable DNS resolution to skip hosts file updates ([#79](https://github.com/Firecrown-Media/stax/issues/79)) ([da7069b](https://github.com/Firecrown-Media/stax/commit/da7069bf0fa36f0eb3e8cf961de53925a1402c5f))
+
 ## [2.10.0](https://github.com/Firecrown-Media/stax/compare/v2.9.0...v2.10.0) (2025-11-16)
 
 
