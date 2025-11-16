@@ -87,6 +87,7 @@ type ConfigOptions struct {
 	PostStartHooks        []string
 	PostImportHooks       []string
 	XdebugEnabled         bool
+	UseDNSWhenPossible    bool // Use DNS for .ddev.site domains
 }
 
 // MediaProxyOptions contains options for Nginx media proxy configuration
