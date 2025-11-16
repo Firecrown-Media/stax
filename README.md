@@ -4,6 +4,16 @@
 
 Stax streamlines your WordPress development workflow - from environment setup to database syncing - so you can focus on building great sites instead of wrestling with configuration.
 
+## Repository Structure
+
+This is the private development repository for Stax. All development, issues, and planning happen here.
+
+**Repositories:**
+- **Private Development**: [Firecrown-Media/stax](https://github.com/Firecrown-Media/stax) (this repo)
+- **Public Releases**: [Firecrown-Media/stax-public](https://github.com/Firecrown-Media/stax-public) (distribution only)
+
+Releases are automatically synced to the public repository for Homebrew distribution. The public repository is a mirror containing only release artifacts and documentation - no development history or sensitive files.
+
 > **🎉 v2.5.0 Release - One-Command WordPress Setup**
 > Stax now provides complete one-command WordPress setup from empty directory to running site!
 >
