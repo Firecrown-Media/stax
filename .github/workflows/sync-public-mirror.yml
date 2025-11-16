@@ -112,6 +112,11 @@ jobs:
           # Force push the current state to main
           git push public HEAD:main --force
 
+          # Delete old tag locally and create new one pointing to cleaned HEAD
+          # This is necessary because the original tag points to a commit with workflows
+          git tag -d "${TAG}" 2>/dev/null || true
+          git tag "${TAG}"
+
           # Push the tag
           git push public "${TAG}" --force
 
