@@ -9,10 +9,10 @@ import (
 
 // DockerInfo contains Docker system information
 type DockerInfo struct {
-	Installed       bool
-	Version         string
-	Running         bool
-	ComposeVersion  string
+	Installed        bool
+	Version          string
+	Running          bool
+	ComposeVersion   string
 	ComposeInstalled bool
 }
 
