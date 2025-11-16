@@ -203,18 +203,18 @@ func toFieldName(name string) string {
 func toYAMLKey(name string) string {
 	// Handle special cases
 	specialCases := map[string]string{
-		"URL":         "url",
-		"SSHGateway":  "ssh_gateway",
-		"PHPVersion":  "php_version",
-		"MySQLVersion": "mysql_version",
-		"MySQLType":   "mysql_type",
-		"NodeJSVersion": "nodejs_version",
+		"URL":             "url",
+		"SSHGateway":      "ssh_gateway",
+		"PHPVersion":      "php_version",
+		"MySQLVersion":    "mysql_version",
+		"MySQLType":       "mysql_type",
+		"NodeJSVersion":   "nodejs_version",
 		"NFSMountEnabled": "nfs_mount_enabled",
-		"FQDNs":       "fqdns",
-		"TTL":         "ttl",
-		"DDEV":        "ddev",
-		"NPM":         "npm",
-		"PHPCS":       "phpcs",
+		"FQDNs":           "fqdns",
+		"TTL":             "ttl",
+		"DDEV":            "ddev",
+		"NPM":             "npm",
+		"PHPCS":           "phpcs",
 	}
 
 	if mapped, ok := specialCases[name]; ok {

@@ -19,14 +19,14 @@ import (
 
 // CheckResult represents the result of a diagnostic check
 type CheckResult struct {
-	Name        string
-	Status      CheckStatus
-	Message     string
-	Suggestion  string
-	Details     map[string]string
-	Category    string // Category for grouping checks
-	CanAutoFix  bool   // Whether this check can be auto-fixed
-	FixApplied  bool   // Whether a fix was applied
+	Name       string
+	Status     CheckStatus
+	Message    string
+	Suggestion string
+	Details    map[string]string
+	Category   string // Category for grouping checks
+	CanAutoFix bool   // Whether this check can be auto-fixed
+	FixApplied bool   // Whether a fix was applied
 }
 
 // CheckStatus represents the status of a check
@@ -230,8 +230,8 @@ func CheckDDEV() CheckResult {
 	return CheckResult{
 		Name:     "DDEV",
 		Category: "System Requirements",
-		Status:  StatusPass,
-		Message: fmt.Sprintf("DDEV version %s installed", version),
+		Status:   StatusPass,
+		Message:  fmt.Sprintf("DDEV version %s installed", version),
 		Details: map[string]string{
 			"version": version,
 		},
@@ -254,10 +254,10 @@ func CheckGo() CheckResult {
 
 	version := strings.TrimSpace(string(output))
 	return CheckResult{
-		Name:    "Go Installation",
+		Name:     "Go Installation",
 		Category: "System Requirements",
-		Status:  StatusPass,
-		Message: version,
+		Status:   StatusPass,
+		Message:  version,
 		Details: map[string]string{
 			"version": strings.TrimPrefix(version, "go version "),
 		},
@@ -281,10 +281,10 @@ func CheckStaxConfig(projectPath string) CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "Stax Configuration",
+		Name:     "Stax Configuration",
 		Category: "Configuration",
-		Status:  StatusPass,
-		Message: ".stax.yml found",
+		Status:   StatusPass,
+		Message:  ".stax.yml found",
 		Details: map[string]string{
 			"path": configPath,
 		},
@@ -322,10 +322,10 @@ func CheckDDEVConfig(projectPath string) CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "DDEV Configuration",
+		Name:     "DDEV Configuration",
 		Category: "Configuration",
-		Status:  StatusPass,
-		Message: "DDEV is configured",
+		Status:   StatusPass,
+		Message:  "DDEV is configured",
 		Details: map[string]string{
 			"path": configPath,
 		},
@@ -358,10 +358,10 @@ func CheckCredentials(projectPath string) CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "Credentials",
-		Category:   "Credentials",
-		Status:  StatusPass,
-		Message: "All credentials are properly configured",
+		Name:     "Credentials",
+		Category: "Credentials",
+		Status:   StatusPass,
+		Message:  "All credentials are properly configured",
 	}
 }
 
@@ -441,10 +441,10 @@ func CheckSSHKey() CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "SSH Key",
-		Category:   "Credentials",
-		Status:  StatusPass,
-		Message: "SSH key found and properly configured",
+		Name:     "SSH Key",
+		Category: "Credentials",
+		Status:   StatusPass,
+		Message:  "SSH key found and properly configured",
 		Details: map[string]string{
 			"path":        foundKey,
 			"permissions": "0600",
@@ -467,10 +467,10 @@ func CheckGitHubToken() CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "GitHub Token",
-		Category:   "Credentials",
-		Status:  StatusPass,
-		Message: "GitHub token configured",
+		Name:     "GitHub Token",
+		Category: "Credentials",
+		Status:   StatusPass,
+		Message:  "GitHub token configured",
 		Details: map[string]string{
 			"token_length": fmt.Sprintf("%d characters", len(token)),
 		},
@@ -501,10 +501,10 @@ func CheckPorts() CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "Port Availability",
-		Category:   "Network Connectivity",
-		Status:  StatusPass,
-		Message: "All required ports are available",
+		Name:     "Port Availability",
+		Category: "Network Connectivity",
+		Status:   StatusPass,
+		Message:  "All required ports are available",
 		Details: map[string]string{
 			"checked_ports": fmt.Sprintf("%v", defaultPorts),
 		},
@@ -583,10 +583,10 @@ func CheckWPEngineAPI() CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "WPEngine API",
-		Category:   "Network Connectivity",
-		Status:  StatusPass,
-		Message: "WPEngine API is reachable and credentials are valid",
+		Name:     "WPEngine API",
+		Category: "Network Connectivity",
+		Status:   StatusPass,
+		Message:  "WPEngine API is reachable and credentials are valid",
 		Details: map[string]string{
 			"api_user": creds.APIUser,
 		},
@@ -629,10 +629,10 @@ func CheckWPEngineSSH() CheckResult {
 	conn.Close()
 
 	return CheckResult{
-		Name:    "WPEngine SSH Gateway",
-		Category:   "Network Connectivity",
-		Status:  StatusPass,
-		Message: "SSH gateway is reachable",
+		Name:     "WPEngine SSH Gateway",
+		Category: "Network Connectivity",
+		Status:   StatusPass,
+		Message:  "SSH gateway is reachable",
 		Details: map[string]string{
 			"gateway": gateway,
 			"port":    "22",
@@ -659,10 +659,10 @@ func CheckInternetConnectivity() CheckResult {
 		if err == nil {
 			resp.Body.Close()
 			return CheckResult{
-				Name:    "Internet Connectivity",
-			Category:   "Network Connectivity",
-				Status:  StatusPass,
-				Message: "Internet connection is working",
+				Name:     "Internet Connectivity",
+				Category: "Network Connectivity",
+				Status:   StatusPass,
+				Message:  "Internet connection is working",
 				Details: map[string]string{
 					"tested_endpoint": endpoint,
 				},
@@ -691,7 +691,7 @@ func CheckDiskSpace(projectPath string) CheckResult {
 		if err != nil {
 			return CheckResult{
 				Name:       "Disk Space",
-			Category:   "Environment",
+				Category:   "Environment",
 				Status:     StatusWarning,
 				Message:    "Cannot determine current directory",
 				Suggestion: "Check your working directory",
@@ -753,10 +753,10 @@ func CheckDiskSpace(projectPath string) CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "Disk Space",
-		Category:   "Environment",
-		Status:  StatusPass,
-		Message: fmt.Sprintf("%.2f GB available", availableGB),
+		Name:     "Disk Space",
+		Category: "Environment",
+		Status:   StatusPass,
+		Message:  fmt.Sprintf("%.2f GB available", availableGB),
 		Details: map[string]string{
 			"available": fmt.Sprintf("%.2f GB", availableGB),
 			"total":     fmt.Sprintf("%.2f GB", totalGB),
@@ -807,18 +807,18 @@ func CheckDDEVStatus(projectPath string) CheckResult {
 	status, err := manager.GetStatus()
 	if err != nil {
 		return CheckResult{
-			Name:    "DDEV Status",
-			Category:   "Service Health",
-			Status:  StatusPass,
-			Message: "DDEV project is running",
+			Name:     "DDEV Status",
+			Category: "Service Health",
+			Status:   StatusPass,
+			Message:  "DDEV project is running",
 		}
 	}
 
 	return CheckResult{
-		Name:    "DDEV Status",
-		Category:   "Service Health",
-		Status:  StatusPass,
-		Message: fmt.Sprintf("DDEV project '%s' is running", status.ProjectName),
+		Name:     "DDEV Status",
+		Category: "Service Health",
+		Status:   StatusPass,
+		Message:  fmt.Sprintf("DDEV project '%s' is running", status.ProjectName),
 		Details: map[string]string{
 			"project_name": status.ProjectName,
 			"state":        status.State,
@@ -834,10 +834,10 @@ func CheckDatabaseConnectivity(projectPath string) CheckResult {
 	ddevPath := filepath.Join(projectPath, ".ddev")
 	if _, err := os.Stat(ddevPath); os.IsNotExist(err) {
 		return CheckResult{
-			Name:    "Database Connectivity",
-			Category:   "Service Health",
-			Status:  StatusSkip,
-			Message: "DDEV not configured",
+			Name:     "Database Connectivity",
+			Category: "Service Health",
+			Status:   StatusSkip,
+			Message:  "DDEV not configured",
 		}
 	}
 
@@ -872,10 +872,10 @@ func CheckDatabaseConnectivity(projectPath string) CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "Database Connectivity",
-		Category:   "Service Health",
-		Status:  StatusPass,
-		Message: "Database is accessible",
+		Name:     "Database Connectivity",
+		Category: "Service Health",
+		Status:   StatusPass,
+		Message:  "Database is accessible",
 	}
 }
 
@@ -884,10 +884,10 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 	// Check if we're in a project directory
 	if projectPath == "" || projectPath == "." {
 		return CheckResult{
-			Name:    "WordPress Installation",
-			Category:   "Service Health",
-			Status:  StatusSkip,
-			Message: "Not in a project directory",
+			Name:     "WordPress Installation",
+			Category: "Service Health",
+			Status:   StatusSkip,
+			Message:  "Not in a project directory",
 		}
 	}
 
@@ -920,10 +920,10 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 	running, _ := manager.IsRunning()
 	if !running {
 		return CheckResult{
-			Name:    "WordPress Installation",
-			Category:   "Service Health",
-			Status:  StatusPass,
-			Message: "WordPress files present (DDEV not running to verify)",
+			Name:     "WordPress Installation",
+			Category: "Service Health",
+			Status:   StatusPass,
+			Message:  "WordPress files present (DDEV not running to verify)",
 			Details: map[string]string{
 				"wp-config":  "found",
 				"wp-content": "found",
@@ -955,10 +955,10 @@ func CheckWordPressInstallation(projectPath string) CheckResult {
 	}
 
 	return CheckResult{
-		Name:    "WordPress Installation",
-		Category:   "Service Health",
-		Status:  StatusPass,
-		Message: fmt.Sprintf("WordPress %s installed and configured", version),
+		Name:     "WordPress Installation",
+		Category: "Service Health",
+		Status:   StatusPass,
+		Message:  fmt.Sprintf("WordPress %s installed and configured", version),
 		Details: map[string]string{
 			"version": version,
 		},

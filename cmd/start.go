@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	startBuild   bool
-	startXdebug  bool
+	startBuild     bool
+	startXdebug    bool
 	startSkipHooks bool
 )
 
