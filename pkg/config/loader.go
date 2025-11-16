@@ -181,6 +181,66 @@ func mergeConfigs(base, override *Config) *Config {
 		result.Repository.Branch = override.Repository.Branch
 	}
 
+	// Override Build config - Composer
+	if override.Build.Composer.InstallArgs != "" {
+		result.Build.Composer.InstallArgs = override.Build.Composer.InstallArgs
+	}
+	if override.Build.Composer.Timeout != 0 {
+		result.Build.Composer.Timeout = override.Build.Composer.Timeout
+	}
+	result.Build.Composer.Optimize = override.Build.Composer.Optimize
+	result.Build.Composer.NoDev = override.Build.Composer.NoDev
+	result.Build.Composer.IgnorePlatformReqs = override.Build.Composer.IgnorePlatformReqs
+
+	// Override Build config - NPM
+	if override.Build.NPM.InstallArgs != "" {
+		result.Build.NPM.InstallArgs = override.Build.NPM.InstallArgs
+	}
+	if override.Build.NPM.BuildCommand != "" {
+		result.Build.NPM.BuildCommand = override.Build.NPM.BuildCommand
+	}
+	if override.Build.NPM.DevCommand != "" {
+		result.Build.NPM.DevCommand = override.Build.NPM.DevCommand
+	}
+	if override.Build.NPM.Timeout != 0 {
+		result.Build.NPM.Timeout = override.Build.NPM.Timeout
+	}
+	result.Build.NPM.LegacyPeerDeps = override.Build.NPM.LegacyPeerDeps
+
+	// Override Build config - PHPCS
+	if override.Build.PHPCS.Config != "" {
+		result.Build.PHPCS.Config = override.Build.PHPCS.Config
+	}
+	if override.Build.PHPCS.Standard != "" {
+		result.Build.PHPCS.Standard = override.Build.PHPCS.Standard
+	}
+	if override.Build.PHPCS.Extensions != "" {
+		result.Build.PHPCS.Extensions = override.Build.PHPCS.Extensions
+	}
+	if override.Build.PHPCS.Ignore != "" {
+		result.Build.PHPCS.Ignore = override.Build.PHPCS.Ignore
+	}
+	result.Build.PHPCS.ShowSniffs = override.Build.PHPCS.ShowSniffs
+
+	// Override Build config - Hooks
+	result.Build.Hooks.PreCommit = override.Build.Hooks.PreCommit
+	result.Build.Hooks.PrePush = override.Build.Hooks.PrePush
+	result.Build.Hooks.CommitMsg = override.Build.Hooks.CommitMsg
+
+	// Override Build config - Scripts
+	if override.Build.Scripts.Main != "" {
+		result.Build.Scripts.Main = override.Build.Scripts.Main
+	}
+	if len(override.Build.Scripts.Additional) > 0 {
+		result.Build.Scripts.Additional = override.Build.Scripts.Additional
+	}
+	if len(override.Build.Scripts.PreBuild) > 0 {
+		result.Build.Scripts.PreBuild = override.Build.Scripts.PreBuild
+	}
+	if len(override.Build.Scripts.PostBuild) > 0 {
+		result.Build.Scripts.PostBuild = override.Build.Scripts.PostBuild
+	}
+
 	return result
 }
 
