@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	mediaProxyURL    string
-	mediaProxyCDN    string
-	mediaProxyCache  bool
+	mediaProxyURL      string
+	mediaProxyCDN      string
+	mediaProxyCache    bool
 	mediaProxyCacheTTL string
 )
 

@@ -11,8 +11,8 @@ import (
 
 // ConfigVersion represents the configuration version metadata
 type ConfigVersion struct {
-	Version int    `yaml:"version"`
-	Schema  string `yaml:"schema,omitempty"`
+	Version  int    `yaml:"version"`
+	Schema   string `yaml:"schema,omitempty"`
 	Migrated string `yaml:"migrated,omitempty"` // Timestamp of last migration
 }
 
@@ -28,9 +28,9 @@ type MigrationChange struct {
 
 // MigrationPlan represents a planned migration
 type MigrationPlan struct {
-	FromVersion int
-	ToVersion   int
-	Changes     []MigrationChange
+	FromVersion    int
+	ToVersion      int
+	Changes        []MigrationChange
 	RequiresBackup bool
 }
 

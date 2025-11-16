@@ -79,11 +79,11 @@ func GetProcessUsingPort(port int) (string, error) {
 // DefaultDDEVPorts returns the default ports used by DDEV
 func DefaultDDEVPorts() []int {
 	return []int{
-		80,    // HTTP
-		443,   // HTTPS
-		3306,  // MySQL
-		8025,  // Mailhog
-		8036,  // PHPMyAdmin
+		80,   // HTTP
+		443,  // HTTPS
+		3306, // MySQL
+		8025, // Mailhog
+		8036, // PHPMyAdmin
 	}
 }
 
