@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.12.1](https://github.com/Firecrown-Media/stax/compare/v2.12.0...v2.12.1) (2025-11-16)
+
+
+### Bug Fixes
+
+* **sync:** exclude .github/workflows from public mirror ([5dc6692](https://github.com/Firecrown-Media/stax/commit/5dc66922959054e38cf753d4cced6f158ea859a1))
+* **sync:** recreate tag pointing to cleaned commit ([76305b5](https://github.com/Firecrown-Media/stax/commit/76305b5cd4f61496e3c4789473e6345224330147))
+* **sync:** use git rm to remove workflows from index ([3bc9a75](https://github.com/Firecrown-Media/stax/commit/3bc9a757a765639ca25aea1ecbdaa85cc600ba7c))
+
 ## [2.12.0](https://github.com/Firecrown-Media/stax/compare/v2.11.0...v2.12.0) (2025-11-16)
 
 
