@@ -71,7 +71,7 @@ func GenerateConfig(projectPath string, options ConfigOptions) (*DDEVConfig, err
 		RouterHTTPPort:      options.RouterHTTPPort,
 		RouterHTTPSPort:     options.RouterHTTPSPort,
 		XdebugEnabled:       options.XdebugEnabled,
-		UseDNSWhenPossible:  false, // Keep DNS off for predictability
+		UseDNSWhenPossible:  options.UseDNSWhenPossible,
 		ComposerVersion:     options.ComposerVersion,
 		WebEnvironment:      options.WebEnvironment,
 		NodeJSVersion:       options.NodeJSVersion,
@@ -225,18 +225,19 @@ func ValidateConfig(config *DDEVConfig) error {
 // GetDefaultConfigOptions returns default configuration options
 func GetDefaultConfigOptions(projectName string) ConfigOptions {
 	return ConfigOptions{
-		ProjectName:     projectName,
-		DocRoot:         "public",
-		Type:            "wordpress",
-		PHPVersion:      "8.1",
-		DatabaseType:    "mysql",
-		DatabaseVersion: "8.0",
-		RouterHTTPPort:  "80",
-		RouterHTTPSPort: "443",
-		ComposerVersion: "2",
-		NodeJSVersion:   "20",
-		XdebugEnabled:   false,
-		MutagenEnabled:  runtime.GOOS == "darwin",
-		PerformanceMode: "mutagen",
+		ProjectName:        projectName,
+		DocRoot:            "public",
+		Type:               "wordpress",
+		PHPVersion:         "8.1",
+		DatabaseType:       "mysql",
+		DatabaseVersion:    "8.0",
+		RouterHTTPPort:     "80",
+		RouterHTTPSPort:    "443",
+		ComposerVersion:    "2",
+		NodeJSVersion:      "20",
+		XdebugEnabled:      false,
+		UseDNSWhenPossible: true,
+		MutagenEnabled:     runtime.GOOS == "darwin",
+		PerformanceMode:    "mutagen",
 	}
 }

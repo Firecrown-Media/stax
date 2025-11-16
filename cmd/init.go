@@ -599,18 +599,19 @@ func generateDDEVConfig(projectDir string, cfg *config.Config) error {
 
 	// Prepare DDEV config options
 	options := ddev.ConfigOptions{
-		ProjectName:     cfg.Project.Name,
-		Type:            mapProjectTypeToDDEV(cfg.Project.Type),
-		DocRoot:         "public",
-		PHPVersion:      cfg.DDEV.PHPVersion,
-		DatabaseType:    cfg.DDEV.MySQLType,
-		DatabaseVersion: cfg.DDEV.MySQLVersion,
-		RouterHTTPPort:  cfg.DDEV.RouterHTTPPort,
-		RouterHTTPSPort: cfg.DDEV.RouterHTTPSPort,
-		XdebugEnabled:   cfg.DDEV.XdebugEnabled,
-		MutagenEnabled:  cfg.DDEV.MutagenEnabled,
-		ComposerVersion: cfg.DDEV.ComposerVersion,
-		NodeJSVersion:   cfg.DDEV.NodeJSVersion,
+		ProjectName:        cfg.Project.Name,
+		Type:               mapProjectTypeToDDEV(cfg.Project.Type),
+		DocRoot:            "public",
+		PHPVersion:         cfg.DDEV.PHPVersion,
+		DatabaseType:       cfg.DDEV.MySQLType,
+		DatabaseVersion:    cfg.DDEV.MySQLVersion,
+		RouterHTTPPort:     cfg.DDEV.RouterHTTPPort,
+		RouterHTTPSPort:    cfg.DDEV.RouterHTTPSPort,
+		XdebugEnabled:      cfg.DDEV.XdebugEnabled,
+		UseDNSWhenPossible: cfg.DDEV.UseDNSWhenPossible,
+		MutagenEnabled:     cfg.DDEV.MutagenEnabled,
+		ComposerVersion:    cfg.DDEV.ComposerVersion,
+		NodeJSVersion:      cfg.DDEV.NodeJSVersion,
 	}
 
 	// Add additional hostnames for multisite

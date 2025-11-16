@@ -114,6 +114,7 @@ type DDEVConfig struct {
 	NFSMountEnabled     bool                `yaml:"nfs_mount_enabled"`
 	MutagenEnabled      bool                `yaml:"mutagen_enabled"`
 	XdebugEnabled       bool                `yaml:"xdebug_enabled"`
+	UseDNSWhenPossible  bool                `yaml:"use_dns_when_possible,omitempty"`
 	NodeJSVersion       string              `yaml:"nodejs_version,omitempty"`
 	ComposerVersion     string              `yaml:"composer_version,omitempty"`
 	AdditionalHostnames []string            `yaml:"additional_hostnames,omitempty"`
@@ -392,18 +393,19 @@ func Defaults() *Config {
 			Mode: "subdomain",
 		},
 		DDEV: DDEVConfig{
-			PHPVersion:      "8.1",
-			MySQLVersion:    "8.0",
-			MySQLType:       "mysql",
-			WebserverType:   "nginx-fpm",
-			RouterHTTPPort:  "80",
-			RouterHTTPSPort: "443",
-			MailHogPort:     "8025",
-			NFSMountEnabled: false,
-			MutagenEnabled:  false,
-			XdebugEnabled:   false,
-			NodeJSVersion:   "20",
-			ComposerVersion: "2",
+			PHPVersion:         "8.1",
+			MySQLVersion:       "8.0",
+			MySQLType:          "mysql",
+			WebserverType:      "nginx-fpm",
+			RouterHTTPPort:     "80",
+			RouterHTTPSPort:    "443",
+			MailHogPort:        "8025",
+			NFSMountEnabled:    false,
+			MutagenEnabled:     false,
+			XdebugEnabled:      false,
+			UseDNSWhenPossible: true,
+			NodeJSVersion:      "20",
+			ComposerVersion:    "2",
 		},
 		WPEngine: WPEngineConfig{
 			Environment: "production",
